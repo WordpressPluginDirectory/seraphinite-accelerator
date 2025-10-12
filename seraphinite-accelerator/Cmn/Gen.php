@@ -107,11 +107,21 @@ class Gen
 		return( Gen::HrSuccFromFail( $hr ) );
 	}
 
-	static function GetArrField( $arr, $fieldPath, $defVal = null, $sep = '.', $bCaseIns = false, $bSafe = true )
+	static function NullIfEmpty( $v )
+	{
+		return( empty( $v ) ? null : $v );
+	}
+
+	static function NormArrFieldKey( $key )
+	{
+		return( is_scalar( $key ) ? $key : null );
+	}
+
+	static function GetArrField( $arr, $fieldPath, $defVal = null, $sep = '.', $bCaseIns = false, $bSafe = true, &$bFound = null )
 	{
 		if( !is_array( $fieldPath ) )
 			$fieldPath = explode( $sep, $fieldPath );
-		return( self::_GetArrField( $arr, $fieldPath, $defVal, $bCaseIns, $bSafe ) );
+		return( self::_GetArrField( $arr, $fieldPath, $defVal, $bCaseIns, $bSafe, $bFound ) );
 	}
 
 	static private function _GetVarType( $v )
@@ -122,11 +132,12 @@ class Gen
 		return( $t );
 	}
 
-	static private function _GetArrField( $v, array $fieldPath, $defVal = null, $bCaseIns = false, $bSafe = true )
+	static private function _GetArrField( $v, array $fieldPath, $defVal = null, $bCaseIns = false, $bSafe = true, &$bFound = null )
 	{
 		if( !count( $fieldPath ) )
 			return( $defVal );
 
+		$bFoundLastKey = false;
 		foreach( $fieldPath as $fld )
 		{
 			$isArr = is_array( $v ) ? true : ( is_object( $v ) ? false : null );
@@ -136,24 +147,31 @@ class Gen
 			if( $fld === '' )
 				continue;
 
-			$vNext = $isArr ? ( isset( $v[ $fld ] ) ? $v[ $fld ] : null ) : ( isset( $v -> { $fld } ) ? $v -> { $fld } : null );
-			if( $vNext === null && !( $isArr ? isset( $v[ $fld ] ) : isset( $v -> { $fld } ) ) )
+			$vNext = $isArr ? ($v[ $fld ]??null) : ($v -> { $fld }??null);
+			if( $vNext === null && !( $isArr ? array_key_exists( $fld, $v ) : property_exists( $v, $fld ) ) )
 			{
 				if( !$bCaseIns )
 					return( $defVal );
 
 				$fld = strtolower( $fld );
 
-				$vNext = $isArr ? ( isset( $v[ $fld ] ) ? $v[ $fld ] : null ) : ( isset( $v -> { $fld } ) ? $v -> { $fld } : null );
-				if( $vNext === null && !( $isArr ? isset( $v[ $fld ] ) : isset( $v -> { $fld } ) ) )
+				$vNext = $isArr ? ($v[ $fld ]??null) : ($v -> { $fld }??null);
+				if( $vNext === null && !( $isArr ? array_key_exists( $fld, $v ) : property_exists( $v, $fld ) ) )
 					return( $defVal );
+
+				$bFoundLastKey = true;
 			}
+			else
+				$bFoundLastKey = true;
 
 			$v = $vNext;
 		}
 
 		if( $bSafe && $defVal !== null && self::_GetVarType( $v ) != self::_GetVarType( $defVal ) )
 			return( $defVal );
+
+		if( $bFoundLastKey )
+			$bFound = true;
 		return( $v );
 	}
 
@@ -208,7 +226,7 @@ class Gen
 			return( true );
 		}
 
-		$vNext = $isObj ? ( isset( $arr -> { $fld } ) ? $arr -> { $fld } : null ) : ( isset( $arr[ $fld ] ) ? $arr[ $fld ] : null );
+		$vNext = $isObj ? ($arr -> { $fld }??null) : ($arr[ $fld ]??null);
 		if( !is_array( $vNext ) && !is_object( $vNext ) )
 		{
 			if( $isObj )
@@ -283,15 +301,14 @@ class Gen
 		return( @serialize( $v ) );
 	}
 
-	static function Unserialize( $data, $defVal = null )
+	static function Unserialize( $data, $defVal = null, &$bOk = null )
 	{
-		if( function_exists( 'is_serialized' ) && !is_serialized( $data ) )
-			return( $defVal );
 
 		$v = @unserialize( $data );
-		if( $v === false )
+		if( $v === false && $data !== @serialize( false ) )
 			return( $defVal );
 
+		$bOk = true;
 		return( $v );
 	}
 
@@ -490,10 +507,27 @@ class Gen
 		return( $dataNew );
 	}
 
+	const HTACCESS_SOFT_NAME = 0;
+	const HTACCESS_SOFT_VER = 1;
+	const HTACCESS_SOFT_SUBNAME = 2;
+
 	static function HtAccess_IsSupported()
 	{
 
-		return( !!Gen::CallFunc( 'apache_get_version' ) || preg_match( '@apache@i', isset( $_SERVER[ 'SERVER_SOFTWARE' ] ) ? $_SERVER[ 'SERVER_SOFTWARE' ] : '' ) || preg_match( '@litespeed@i', isset( $_SERVER[ 'SERVER_SOFTWARE' ] ) ? $_SERVER[ 'SERVER_SOFTWARE' ] : '' ) );
+		$sVer = Gen::CallFunc( 'apache_get_version' );
+		if( !$sVer )
+			$sVer = ($_SERVER[ 'SERVER_SOFTWARE' ]??null);
+
+		if( !is_string( $sVer ) )
+			return( false );
+
+		if( !preg_match( '@(apache|litespeed)(?:/([\\d\\.]+))?@i', $sVer, $m ) )
+			return( false );
+
+		$res = array( Gen::HTACCESS_SOFT_NAME => strtolower( $m[ 1 ] ), Gen::HTACCESS_SOFT_VER => ($m[ 2 ]??'0') );
+		if( preg_match( '@IdeaWebServer@i', $sVer ) )
+			$res[ Gen::HTACCESS_SOFT_SUBNAME ] = 'ideawebserver';
+		return( $res );
 	}
 
 	static function HtAccess_GetBlock( $id )
@@ -583,7 +617,7 @@ class Gen
 	{
 		if( !$withPath )
 		{
-			$filepath = basename( $filepath );
+			$filepath = Gen::StrEndsWith( $filepath, array( '/', '\\' ) ) ? '' : basename( $filepath );
 			if( !$nameOnly )
 				return( $filepath );
 		}
@@ -812,7 +846,10 @@ class Gen
 
 	static private function _FileOpen( $filename, $mode, $use_include_path = false )
 	{
+
 		if( strpos( $mode, 'r' ) !== false && !@file_exists( $filename ) )
+		    return( false );
+		if( strpos( $mode, 'x' ) !== false && @file_exists( $filename ) )
 		    return( false );
 
 		$h = @fopen( $filename, $mode, $use_include_path );
@@ -970,6 +1007,18 @@ class Gen
 		return( @file_exists( $file ) ? @filesize( $file ) : false );
 	}
 
+	static function FileGetContents( $file )
+	{
+		return( @file_exists( $file ) ? @file_get_contents( $file ) : false );
+	}
+
+	static function FilePutContents( $file, $data )
+	{
+		if( is_dir( $file ) )
+			Gen::DelDir( $file );
+		return( @file_put_contents( $file, $data ) );
+	}
+
 	static function SetLastSlash( $filepath, $set = true, $slash = '/' )
 	{
 		$n = strlen( $filepath );
@@ -1048,7 +1097,7 @@ class Gen
 		return( false );
 	}
 
-	static function StrStartsWith( string $haystack, $needle )
+	static function StrStartsWith( string $haystack, $needle, &$needleKey = null )
 	{
 		if( is_string( $needle ) )
 		{
@@ -1057,14 +1106,17 @@ class Gen
 			return( substr_compare( $haystack, $needle, 0, strlen( $needle ) ) === 0 );
 		}
 
-		foreach( $needle as $needleEl )
+		foreach( $needle as $k => $needleEl )
 			if( Gen::StrStartsWith( $haystack, $needleEl ) )
+			{
+				$needleKey = $k;
 				return( true );
+			}
 
 		return( false );
 	}
 
-	static function StrEndsWith( string $haystack, string $needle )
+	static function StrEndsWith( string $haystack, $needle, &$needleKey = null )
 	{
 		if( is_string( $needle ) )
 		{
@@ -1073,9 +1125,12 @@ class Gen
 			return( substr_compare( $haystack, $needle, -strlen( $needle ), strlen( $needle ) ) === 0 );
 		}
 
-		foreach( $needle as $needleEl )
+		foreach( $needle as $k => $needleEl )
 			if( Gen::StrEndsWith( $haystack, $needleEl ) )
+			{
+				$needleKey = $k;
 				return( true );
+			}
 
 		return( false );
 	}
@@ -1250,6 +1305,14 @@ class Gen
 			next( $array );
 	}
 
+	static function ArrMap( array $arr, $cbItem )
+	{
+		$a = array();
+		foreach( $arr as $k => $v )
+			$a[] = call_user_func_array( $cbItem, array( $k, $v ) );
+		return( $a );
+	}
+
 	static function GetCurRequestTime( $serverArgs = null )
 	{
 		if( $serverArgs === null )
@@ -1363,8 +1426,6 @@ class Gen
 			ob_end_flush();
 		flush();
 
-		error_reporting( E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR );
-
 		return( Gen::CloseCurRequestSessionForContinueBgWorkEx() );
 	}
 
@@ -1392,12 +1453,15 @@ class Gen
 
 		static $requestId;
 		if( $requestId === null )
-			$requestId = Gen::MicroTimeStamp( (isset($_SERVER[ 'REQUEST_TIME_FLOAT' ])?$_SERVER[ 'REQUEST_TIME_FLOAT' ]:null) );
+			$requestId = Gen::MicroTimeStamp( ($_SERVER[ 'REQUEST_TIME_FLOAT' ]??null) );
 
 		{
 			$fileHtaccess = Gen::GetFileDir( $file ) . '/.htaccess';
 			if( !@file_exists( $fileHtaccess ) )
+			{
+				Gen::MakeDir( Gen::GetFileDir( $file ), true );
 				@file_put_contents( $fileHtaccess, 'Options -Indexes' );
+			}
 		}
 
 		if( Gen::FileSize( $file ) > ( 2 * 1024 * 1024 ) )
@@ -1606,18 +1670,18 @@ class Gen
 				$res .= "\n";
 
 			$res .= '#' . $i . ' ';
-			if( (isset($info[ 'file' ])?$info[ 'file' ]:null) )
+			if( ($info[ 'file' ]??null) )
 				$res .= $info[ 'file' ];
 			else
 				$res .= '{}';
-			if( (isset($info[ 'line' ])?$info[ 'line' ]:null) !== null )
+			if( ($info[ 'line' ]??null) !== null )
 				$res .= '(' . $info[ 'line' ] . ')';
 
 			$res .= ': ';
 
-			if( (isset($info[ 'class' ])?$info[ 'class' ]:null) )
+			if( ($info[ 'class' ]??null) )
 				$res .= $info[ 'class' ];
-			if( (isset($info[ 'type' ])?$info[ 'type' ]:null) )
+			if( ($info[ 'type' ]??null) )
 				$res .= $info[ 'type' ];
 			$res .= Gen::GetArrField( $info, array( 'function' ), '' ) . '(';
 
@@ -1645,8 +1709,21 @@ class Gen
 			{
 				if( $sQuote === '' )
 					$sQuote = $c;
-				else if( $sQuote === $c && $cPrev !== '\\' )
-					$sQuote = '';
+				else if( $sQuote === $c )
+				{
+					if( $cPrev !== '\\' )
+						$sQuote = '';
+					else if( $c === '\'' )
+						$data[ $i ] = "\x02";
+				}
+				else
+				{
+					if( $c === '\'' )
+						$data[ $i ] = "\x02";
+					else if( $c === '"' && $cPrev !== '\\' )
+						$data[ $i ] = "\x03";
+				}
+
 				continue;
 			}
 
@@ -1657,18 +1734,37 @@ class Gen
 		$data = str_replace( array( '\'' ), array( '"' ), preg_replace( '@([\\s\\,\\{])(\\w+):@', '$1"$2":', $data ) );
 		$data = preg_replace( '@([\'"}])\\s*,\\s*}@', '$1}', $data );
 		$data = str_replace( array( "\t", "\r", "\n" ), ' ', $data );
-		$data = str_replace( "\x01", ':', $data );
+		$data = str_replace( array( "\x01", "\x02", "\x03" ), array( ':', '\'', '\\"' ), $data );
 		return( $data );
 	}
 
-	static function JsonGetEndPos( $posStart, $data )
+	static function JsonGetStartEndPos( $pos, $data, $dir = 1 )
 	{
-		$n = 0;
-		for( $pos = $posStart; $pos < strlen( $data ); $pos++ )
+		$l = strlen( $data );
+		if( !$l )
+			return( null );
+
+		$aScp = null;
+		switch( $data[ $pos ] )
 		{
-			if( $data[ $pos ] == '{' )
+			case '{':	$aScp = array( '{', '}' ); break;
+			case '[':	$aScp = array( '[', ']' ); break;
+			case '"':	$aScp = array( '"', '"' ); break;
+			case '\'':	$aScp = array( '\'', '\'' ); break;
+		}
+
+		if( !$aScp )
+			return( null );
+
+		$n = 0;
+		for( ; $pos < $l && $pos >= 0; $pos += $dir )
+		{
+			if( $pos > 0 && $data[ $pos - 1 ] == '\\' )
+				continue;
+
+			if( $data[ $pos ] == $aScp[ 0 ] && ( !$n || $aScp[ 0 ] != $aScp[ 1 ] ) )
 				$n++;
-			else if( $data[ $pos ] == '}' )
+			else if( $data[ $pos ] == $aScp[ 1 ] )
 			{
 				$n--;
 				if( !$n )
@@ -1676,7 +1772,17 @@ class Gen
 			}
 		}
 
-		return( $n ? null : ( $pos + 1 ) );
+		return( $n ? null : ( $pos + ( $dir > 0 ? 1 : 0 ) ) );
+	}
+
+	static function JsonGetEndPos( $posStart, $data )
+	{
+		return( Gen::JsonGetStartEndPos( $posStart, $data, 1 ) );
+	}
+
+	static function JsonGetStartPos( $posEnd, $data )
+	{
+		return( Gen::JsonGetStartEndPos( $posEnd, $data, -1 ) );
 	}
 
 	static function VarCmp( $v1, $v2 )
@@ -1693,6 +1799,9 @@ class Gen
 		$fmt[ 'floatPrec' ] = Gen::GetArrField( $fmt, array( 'floatPrec' ), 15 );
 		$fmt[ 'indent' ] = Gen::GetArrField( $fmt, array( 'indent' ), "\t" );
 		$fmt[ 'elemSpace' ] = Gen::GetArrField( $fmt, array( 'elemSpace' ), "\n" );
+		$fmt[ 'assignSpaceBefore' ] = Gen::GetArrField( $fmt, array( 'assignSpaceBefore' ), ' ' );
+		$fmt[ 'assignSpaceAfter' ] = Gen::GetArrField( $fmt, array( 'assignSpaceAfter' ), ' ' );
+		$fmt[ 'escValNl' ] = Gen::GetArrField( $fmt, array( 'escValNl' ), false );
 		return( self::_VarExport( $v, $fmt, $level ) );
 	}
 
@@ -1704,20 +1813,21 @@ class Gen
 			return( $v ? 'true' : 'false' );
 		case 'integer':
 			return( ( string )$v );
-		case 'string':
-			return( '\'' . str_replace( array( '\\', '\'' ), array( '\\\\', '\\\'' ), $v ) . '\'' );
 		case 'double':
 			return( preg_replace( '@([^\\.])0+$@', '${1}', sprintf( '%.' . ( string )$fmt[ 'floatPrec' ] . 'F', $v ) ) );
+
+		case 'string':
+			return( json_encode( $v, JSON_UNESCAPED_SLASHES ) );
 
 		case 'array':
 			$res = 'array(' . $fmt[ 'elemSpace' ];
 			foreach( $v as $k => $vI )
-				$res .= str_repeat( $fmt[ 'indent' ], $level + 1 ) . self::_VarExport( $k, $fmt ) . ' => ' . self::_VarExport( $vI, $fmt, $level + 1 ) . ',' . $fmt[ 'elemSpace' ];
+				$res .= str_repeat( $fmt[ 'indent' ], $level + 1 ) . self::_VarExport( $k, $fmt ) . $fmt[ 'assignSpaceBefore' ] . '=>' . $fmt[ 'assignSpaceAfter' ] . self::_VarExport( $vI, $fmt, $level + 1 ) . ',' . $fmt[ 'elemSpace' ];
 			$res .= str_repeat( $fmt[ 'indent' ], $level ) . ')';
 			return( $res );
 
 		case 'object':
-			return( ( string )$v );
+			return( self::_VarExport( ( array )$v, $fmt, $level ) );
 		}
 
 		return( 'null' );
@@ -1770,7 +1880,12 @@ class Gen
 	static function ParseProps( $props, $sep = ';', $sepVal = '=', $aDefs = null )
 	{
 		$a = array();
-		foreach( explode( ( string )$sep, trim( ( string )$props, $sep ) ) as $p )
+
+		$props = trim( ( string )$props, " \n\r\t\v\x00" . $sep );
+		if( !strlen( $props ) )
+			return( $a );
+
+		foreach( explode( ( string )$sep, $props ) as $p )
 		{
 			if( $sepVal === null )
 			{
@@ -1788,7 +1903,7 @@ class Gen
 
 			$key = trim( $p[ 0 ] );
 
-			$vDef = $aDefs ? (isset($aDefs[ $key ])?$aDefs[ $key ]:null) : null;
+			$vDef = $aDefs ? ($aDefs[ $key ]??null) : null;
 			if( isset( $p[ 1 ] ) )
 			{
 				$v = trim( $p[ 1 ] );
@@ -1826,6 +1941,25 @@ class Gen
 		if( !function_exists( 'set_time_limit' ) )
 			return( false );
 		return( @set_time_limit( $seconds ) );
+	}
+
+	static function NormVal( $v, array $aPrms )
+	{
+		if( isset( $aPrms[ 'min' ] ) && $v < $aPrms[ 'min' ] )
+			$v = $aPrms[ 'min' ];
+		if( isset( $aPrms[ 'max' ] ) && $v > $aPrms[ 'max' ] )
+			$v = $aPrms[ 'max' ];
+		return( $v );
+	}
+
+	static function FileMTime( $file )
+	{
+		return( @file_exists( $file ) ? @filemtime( $file ) : false );
+	}
+
+	static function Constant( string $name, $def = null )
+	{
+		return( defined( $name ) ? @constant( $name ) : $def );
 	}
 
 	static private $_lastErrDsc = null;
@@ -2002,6 +2136,7 @@ class Lock
 
 	function GetErrDescr()
 	{
+
 		$dir = Gen::GetFileDir( $this -> file );
 		return( @is_writable( $dir ) ? LocId::Pack( 'FileModifyErr_%1$s', 'Common', array( $this -> file ) ) : LocId::Pack( 'DirWriteErr_%1$s', 'Common', array( $dir ) ) );
 	}
@@ -2056,7 +2191,7 @@ class CsvFileAsDb implements \Iterator
 		if( !$this -> aHdr || !$this -> aData || count( $this -> aHdr ) != count( $this -> aData ) )
 			return( null );
 
-		$i = (isset($this -> aHdr[ $name ])?$this -> aHdr[ $name ]:null);
+		$i = ($this -> aHdr[ $name ]??null);
 		return( $i === null ? null : $this -> aData[ $i ] );
 	}
 
@@ -2205,8 +2340,8 @@ class ArrayOnFiles implements \Iterator, \ArrayAccess, \Countable
 	{
 		if( is_array( $dirFilesPattern ) )
 		{
-		    $options = (isset($dirFilesPattern[ 'options' ])?$dirFilesPattern[ 'options' ]:null);
-		    $dirFilesPattern = (isset($dirFilesPattern[ 'dirFilesPattern' ])?$dirFilesPattern[ 'dirFilesPattern' ]:null);
+		    $options = ($dirFilesPattern[ 'options' ]??null);
+		    $dirFilesPattern = ($dirFilesPattern[ 'dirFilesPattern' ]??null);
 		}
 
 		$this -> dir = explode( '*', $dirFilesPattern );
@@ -3139,6 +3274,14 @@ class Net
 		return( is_array( $hdrs ) ? $hdrs : array() );
 	}
 
+	static function GetHeaderFromWpRemoteRequestRes( $requestRes, $name )
+	{
+		$hdr = wp_remote_retrieve_header( $requestRes, $name );
+		if( is_array( $hdr ) )
+			$hdr = ($hdr[ 0 ]??null);
+		return( is_string( $hdr ) ? $hdr : '' );
+	}
+
 	static function GetSiteAddrFromUrl( $url, $withScheme = false )
 	{
 		$siteUrlParts = @parse_url( $url );
@@ -3200,7 +3343,7 @@ class Net
 		return( $host );
 	}
 
-	static function GetRequestHeaders( $serverArgs = null, $bAssoc = true, $bNorm = false )
+	static function GetRequestHeaders( $serverArgs = null, $bAssoc = true, $bNorm = false, array $aIncl = array(), array $aExcl = array() )
 	{
 		if( $serverArgs === null )
 			$serverArgs = $_SERVER;
@@ -3209,6 +3352,12 @@ class Net
 		foreach( $serverArgs as $key => $value )
 		{
 			if( strpos( $key, 'HTTP_' ) !== 0 )
+				continue;
+
+			if( $aIncl && !in_array( $key, $aIncl ) )
+				continue;
+
+			if( $aExcl && in_array( $key, $aExcl ) )
 				continue;
 
 			$header = str_replace( ' ', '-', ucwords( str_replace( '_', ' ', strtolower( substr( $key, 5 ) ) ) ) );
@@ -3266,7 +3415,7 @@ class Net
 	static function UrlParseQuery( $query )
 	{
 		$args = array();
-		@parse_str( $query, $args );
+		@parse_str( ( string )$query, $args );
 		return( $args );
 	}
 
@@ -3316,7 +3465,7 @@ class Net
 
 		$url = preg_replace_callback( '%[^:/@?&=#]+%usD', function( $m ) { return( urlencode( $m[ 0 ] ) ); }, $url );
 
-		if( (isset($url[ 0 ])?$url[ 0 ]:null) === ':' && (isset($url[ 1 ])?$url[ 1 ]:null) === '/' )
+		if( ($url[ 0 ]??null) === ':' && ($url[ 1 ]??null) === '/' )
 			$url = substr( $url, 1 );
 
 		$urlComps = @parse_url( $url );
@@ -3431,8 +3580,8 @@ class Net
 		$requestUri = &$_SERVER[ 'REQUEST_URI' ];
 		$requestUriArgs = Net::UrlExtractArgs( $requestUri );
 
-		$redirect_query_string_args = Net::UrlParseQuery( (isset($_SERVER[ 'REDIRECT_QUERY_STRING' ])?$_SERVER[ 'REDIRECT_QUERY_STRING' ]:'') );
-		$query_string_args = Net::UrlParseQuery( (isset($_SERVER[ 'QUERY_STRING' ])?$_SERVER[ 'QUERY_STRING' ]:'') );
+		$redirect_query_string_args = Net::UrlParseQuery( ($_SERVER[ 'REDIRECT_QUERY_STRING' ]??'') );
+		$query_string_args = Net::UrlParseQuery( ($_SERVER[ 'QUERY_STRING' ]??'') );
 
 		foreach( $aArgRemove as $argIdx => $argRemove )
 		{
@@ -3466,6 +3615,66 @@ class Net
 
 		$_SERVER[ 'REDIRECT_QUERY_STRING' ] = Net::UrlBuildQuery( $redirect_query_string_args );
 		$_SERVER[ 'QUERY_STRING' ] = Net::UrlBuildQuery( $query_string_args );
+	}
+
+	static function RemoteRequest( $method, $url, $args = null )
+	{
+		$requestRes = array( 'method' => $method, 'url' => $url, 'response' => array( 'code' => 0, 'message' => '' ), 'headers' => array(), 'body' => '' );
+
+		if( !isset( $args[ 'provider' ] ) )
+			$args[ 'provider' ] = 'CURL';
+		if( !isset( $args[ 'user-agent' ] ) )
+			$args[ 'user-agent' ] = 'seraph-accel-Agent/2.27.45';
+		if( !isset( $args[ 'timeout' ] ) )
+			$args[ 'timeout' ] = 5;
+
+		if( $args[ 'provider' ] !== 'CURL' )
+			return( Gen::E_UNSUPPORTED );
+
+		if( !function_exists( 'curl_init' ) || !function_exists( 'curl_exec' ) )
+			return( Gen::E_UNSUPPORTED );
+
+		$hCurl = curl_init( $url );
+		curl_setopt( $hCurl, CURLOPT_RETURNTRANSFER, true );
+		curl_setopt( $hCurl, CURLOPT_SSL_VERIFYHOST, 2 );
+		curl_setopt( $hCurl, CURLOPT_SSL_VERIFYPEER, false );
+		if( $method === 'POST' )
+			curl_setopt( $hCurl, CURLOPT_POST, true );
+		curl_setopt( $hCurl, CURLOPT_USERAGENT, $args[ 'user-agent' ] );
+		if( isset( $args[ 'referer' ] ) )
+			curl_setopt( $hCurl, CURLOPT_REFERER, $args[ 'referer' ] );
+		curl_setopt( $hCurl, CURLOPT_TIMEOUT, $args[ 'timeout' ] );
+		curl_setopt( $hCurl, CURLOPT_MAXREDIRS, 2 );
+		curl_setopt( $hCurl, CURLOPT_FOLLOWLOCATION, true );
+
+		if( $method === 'POST' && isset( $args[ 'data' ] ) )
+		{
+			$requestRes[ 'data_sent' ] = $args[ 'data' ];
+			curl_setopt( $hCurl, CURLOPT_POSTFIELDS, $args[ 'data' ] );
+		}
+
+		{
+			$aHdrPlain = array();
+			if( isset( $args[ 'headers' ] ) )
+			{
+				$requestRes[ 'headers_sent' ] = $args[ 'headers' ];
+				foreach( $args[ 'headers' ] as $name => $value )
+					$aHdrPlain[] = $name . ': ' . $value;
+			}
+
+			curl_setopt( $hCurl, CURLOPT_HTTPHEADER, $aHdrPlain );
+		}
+
+		$requestRes[ 'body' ] = curl_exec( $hCurl );
+		$requestRes[ 'response' ][ 'code' ] = curl_getinfo( $hCurl, CURLINFO_HTTP_CODE );
+		curl_close( $hCurl );
+
+		return( $requestRes );
+	}
+
+	static function GetTimeFromHdrVal( $v )
+	{
+		return( strtotime( preg_replace( '@;.*$@', '', $v ) ) );
 	}
 }
 
@@ -3691,7 +3900,7 @@ class HtmlNd
 	static function ChildrenIter( $children )
 	{
 		if( !$children )
-			return( $children );
+			return( array() );
 
 		if( $children -> length !== 1 )
 			return( $children );
@@ -3861,6 +4070,22 @@ class HtmlNd
 			return( false );
 
 		$nd -> insertBefore( $ndChild, $ndChildAfter ? $ndChildAfter -> nextSibling : ( $bFirstIfNoChildAfter ? $nd -> firstChild : null ) );
+		return( true );
+	}
+
+	static function Append( $nd, $ndChild )
+	{
+		if( !$nd || !$ndChild )
+			return( false );
+
+		if( is_array( $ndChild ) )
+		{
+			foreach( $ndChild as $ndChildI )
+				$nd -> appendChild( $ndChildI );
+		}
+		else
+			$nd -> appendChild( $ndChild );
+
 		return( true );
 	}
 
@@ -4146,7 +4371,8 @@ class HtmlNd
 
 		if( $aChildren )
 			foreach( $aChildren as $child )
-				$nd -> appendChild( $child );
+				if( $child )
+					$nd -> appendChild( $child );
 
 		return( $nd );
 	}
@@ -4471,6 +4697,9 @@ class Php
 
 	static function Tokens_GetFromContent( $str, $preserveLineNums = false )
 	{
+		if( !function_exists( 'token_get_all' ) )
+			return( false );
+
 		$tokens = @token_get_all( $str );
 		Php::Tokens_Normalize( $tokens, $preserveLineNums );
 		return( $tokens );
@@ -4524,7 +4753,10 @@ class Php
 			{
 				$bracketsLevel--;
 				if( $bracketsLevel == 0 )
+				{
+					$pos++;
 					break;
+				}
 			}
 
 			if( $bracketsLevel == 1 && $token == array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => ',' ) )
@@ -4543,150 +4775,6 @@ class Php
 		}
 
 		return( $res );
-	}
-
-	static function File_SetDefineVal( $file, $name, $val )
-	{
-		if( !file_exists( $file ) )
-			return( Gen::E_NOT_FOUND );
-
-		if( !is_writable( $file ) )
-			return( Gen::E_ACCESS_DENIED );
-
-		$fileContent = file_get_contents( $file );
-		if( !$fileContent )
-			return( Gen::E_ACCESS_DENIED );
-
-		if( !Php::Content_SetDefineVal( $fileContent, $name, $val ) )
-			return( Gen::S_FALSE );
-
-		if( !is_integer( file_put_contents( $file, $fileContent, LOCK_EX ) ) )
-			return( Gen::E_FAIL );
-
-		return( Gen::S_OK );
-	}
-
-	static function Content_SetDefineVal( &$fileContent, $name, $val )
-	{
-		$tokens = Php::Tokens_GetFromContent( $fileContent );
-		if( !Php::Tokens_SetDefineVal( $tokens, $name, $val ) )
-			return( false );
-
-		$fileContent = Php::Tokens_GetContent( $tokens );
-		return( true );
-	}
-
-	static function Tokens_SetDefineVal( &$tokens, $name, $val )
-	{
-
-		$firstInsertPos = Php::Tokens_Find( $tokens, T_OPEN_TAG );
-		if( $firstInsertPos === false )
-		{
-			$tokensInsert = array();
-			$tokensInsert[] = array( Php::TI_ID => T_OPEN_TAG, Php::TI_CONTENT => Php::T_OPEN_TAG_CONTENT );
-			$tokensInsert[] = array( Php::TI_ID => T_WHITESPACE, Php::TI_CONTENT => PHP_EOL . PHP_EOL );
-
-			Php::Tokens_Insert( $tokens, count( $tokens ), $tokensInsert );
-
-			$firstInsertPos = count( $tokens );
-		}
-		else
-		{
-			$firstInsertPos++;
-
-			$firstInsertPos = Php::Tokens_Find( $tokens, array( 'e' => array( T_WHITESPACE ) ), null, $firstInsertPos );
-			if( $firstInsertPos === false )
-				$firstInsertPos = count( $tokens );
-		}
-
-		$defineValPos = false;
-		for( $i = $firstInsertPos; ; )
-		{
-			$i = Php::Tokens_Find( $tokens, T_STRING, 'define', $i );
-			if( $i === false )
-				break;
-			$i++;
-
-			$callArgs = Php::Tokens_GetCallArgs( $tokens, $i );
-			if( empty( $callArgs ) || count( $callArgs ) != 2 )
-				continue;
-
-			if( Php::Token_GetEncapsedStrVal( Php::Token_GetContent( Php::Tokens_CallArgs_GetSingleArg( $callArgs, 0 ), T_CONSTANT_ENCAPSED_STRING ) ) != $name )
-				continue;
-
-			Php::Tokens_CallArgs_GetSingleArg( $callArgs, 1, $defineValPos );
-			break;
-		}
-
-		$changed = false;
-
-		if( $defineValPos === false )
-		{
-			$tokensInsert = array();
-			$tokensInsert[] = array( Php::TI_ID => T_STRING, Php::TI_CONTENT => 'define' );
-			$tokensInsert[] = array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => '(' );
-			$tokensInsert[] = array( Php::TI_ID => T_CONSTANT_ENCAPSED_STRING, Php::TI_CONTENT => '\'' . $name . '\'' );
-			$tokensInsert[] = array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => ',' );
-			$tokensInsert[] = array( Php::TI_ID => T_WHITESPACE, Php::TI_CONTENT => ' ' );
-
-			{
-				$defineValPos = count( $tokensInsert );
-				$tokensInsert[] = array( Php::TI_ID => T_CONSTANT_ENCAPSED_STRING, Php::TI_CONTENT => '\'\'' );
-			}
-
-			$tokensInsert[] = array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => ')' );
-			$tokensInsert[] = array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => ';' );
-			$tokensInsert[] = array( Php::TI_ID => T_WHITESPACE, Php::TI_CONTENT => PHP_EOL . PHP_EOL );
-
-			Php::Tokens_Insert( $tokens, $firstInsertPos, $tokensInsert );
-			$defineValPos += $firstInsertPos;
-
-			$changed = true;
-		}
-
-		{
-
-			$tokenValNew = null;
-			switch( gettype( $val ) )
-			{
-			case 'string':
-				$token = $tokens[ $defineValPos ];
-
-				$cQuote = null;
-				if( $token[ Php::TI_ID ] == T_CONSTANT_ENCAPSED_STRING )
-					$cQuote = substr( $token[ Php::TI_CONTENT ], 0, 1 );
-
-				if( empty( $cQuote ) )
-					$cQuote = '\'';
-
-				$tokenValNew = array( Php::TI_ID => T_CONSTANT_ENCAPSED_STRING, Php::TI_CONTENT => $cQuote . $val . $cQuote );
-				break;
-
-			case 'boolean':
-				$tokenValNew = array( Php::TI_ID => T_STRING, Php::TI_CONTENT => $val ? 'true' : 'false' );
-				break;
-
-			case 'integer':
-				$tokenValNew = array( Php::TI_ID => T_LNUMBER, Php::TI_CONTENT => '' . $val );
-				break;
-
-			case 'double':
-			    $tokenValNew = array( Php::TI_ID => T_DNUMBER, Php::TI_CONTENT => '' . $val );
-			    break;
-
-			default:
-				return( false );
-				break;
-			}
-
-			if( $tokens[ $defineValPos ] != $tokenValNew )
-			{
-				$tokens[ $defineValPos ] = $tokenValNew;
-				$changed = true;
-			}
-		}
-
-		return( true );
 	}
 }
 
@@ -4754,7 +4842,7 @@ class Wp
 			}
 		}
 
-		return( (isset($g_aScope[ $context ])?$g_aScope[ $context ]:null) );
+		return( ($g_aScope[ $context ]??null) );
 	}
 
 	static function SanitizeId( $id )
@@ -4877,12 +4965,14 @@ class Wp
 		return( $obj -> url );
 	}
 
-	static function GetSiteId( $mode = null )
+	static function GetSiteId( $ver = 2 )
 	{
-		if( $mode === 'OLD' )
+		if( $ver === null )
 			$siteUrl = Wp::GetSiteWpRootUrl();
-		else
+		else if( $ver === 1 )
 			$siteUrl = Wp::GetSiteRootUrl( '', 'base' );
+		else
+			$siteUrl = Wp::GetSiteRootUrl();
 
 		$siteUrlParts = @parse_url( $siteUrl );
 		if( !is_array( $siteUrlParts ) )
@@ -4961,12 +5051,90 @@ class Wp
 		return( null );
 	}
 
-	static private function _RemoteGet_Ctx( &$url, &$args )
+	static private function _Config_GetBlockPos( $id, $cont, $aMarker )
+	{
+		$nStart = strpos( $cont, $aMarker[ 0 ] );
+		if( $nStart === false )
+			return( null );
+
+		$nStart += strlen( $aMarker[ 0 ] );
+
+		$nEnd = strpos( $cont, $aMarker[ 1 ], $nStart );
+		if( $nEnd === false )
+			return( null );
+
+		return( array( $nStart, $nEnd - $nStart ) );
+	}
+
+	static function Config_GetBlock( $id )
+	{
+		$aMarker = array( '/* BEGIN ' . $id . ' */', '/* END ' . $id . ' */' );
+
+		$file = Wp::GetConfigFilePath();
+
+		$cont = @file_get_contents( $file );
+		if( !$cont )
+			return( false );
+
+		$aPos = self::_Config_GetBlockPos( $id, $cont, $aMarker );
+		if( !$aPos )
+			return( '' );
+
+		if( preg_match( '@^\\s/\\*.*\\*/@', $cont, $m, 0, $aPos[ 0 ] ) )
+			$aPos[ 0 ] += strlen( $m[ 0 ] );
+
+		return( trim( substr( $cont, $aPos[ 0 ], $aPos[ 1 ] ) ) );
+	}
+
+	static function Config_SetBlockEx( &$cont, $id, $content )
+	{
+		$aMarker = array( '/* BEGIN ' . $id . ' */', '/* END ' . $id . ' */' );
+		$aPos = self::_Config_GetBlockPos( $id, $cont, $aMarker );
+		if( !$aPos )
+		{
+			if( !$content )
+				return( Gen::S_OK );
+
+			if( !Gen::StrStartsWith( $cont, '<?php' ) )
+				return( Gen::E_DATACORRUPTED );
+
+			$cont = substr_replace( $cont, "\n\n" . $aMarker[ 0 ] . $aMarker[ 1 ] . "\n\n", 5, 0 );
+			$aPos = array( 5 + 2 + strlen( $aMarker[ 0 ] ), 0 );
+		}
+
+		$cont = substr_replace( $cont, ( $content ? ( "\n" . '/**' . "\n" . ' * The code (lines) between "BEGIN ' . $id . '" and "END ' . $id . '" are dynamically generated.' . "\n" . ' * Any changes to the directives between these markers will be overwritten.' . "\n" . ' */' ) : '' ) . $content, $aPos[ 0 ], $aPos[ 1 ] );
+		return( Gen::S_OK );
+	}
+
+	static function Config_SetBlock( $id, $content )
+	{
+		$file = Wp::GetConfigFilePath();
+		if( !$file )
+			return( Gen::E_FAIL );
+
+		if( !is_writable( $file ) )
+		    return( Gen::E_ACCESS_DENIED );
+
+		$cont = @file_get_contents( $file );
+		if( !$cont )
+			return( Gen::E_FAIL );
+
+		$hr = Wp::Config_SetBlockEx( $cont, $id, $content );
+		if( Gen::HrFail( $hr ) )
+			return( $hr );
+
+		if( !is_integer( file_put_contents( $file, $cont, LOCK_EX ) ) )
+			return( Gen::E_FAIL );
+
+		return( Gen::S_OK );
+	}
+
+	static private function _RemoteGet_Ctx( &$url, &$args, $method )
 	{
 		if( $args === null )
 			$args = array();
 
-		if( (isset($args[ 'local' ])?$args[ 'local' ]:null) )
+		if( ($args[ 'local' ]??null) )
 		{
 			$aUrl = Net::UrlParse( $url, Net::URLPARSE_F_PRESERVEEMPTIES );
 			if( $aUrl )
@@ -4980,6 +5148,7 @@ class Wp
 		}
 
 		$obj = new AnyObj();
+		$obj -> method = $method;
 
 		$obj -> _cbRequestBefore =
 			function( $obj, $url, $p1, $p2, $p3, &$options )
@@ -4991,11 +5160,12 @@ class Wp
 		$obj -> _cbRequestsBeforeParse =
 			function( $obj, &$response, $url, $headers, $data, $type, $options )
 			{
-				$obj -> method = $type;
+				if( $type )
+					$obj -> method = $type;
 
 				$obj -> headers_sent = ( array )$headers;
-				if( isset( $options[ 'useragent' ] ) )
-					$obj -> headers_sent[ 'User-Agent' ] = $options[ 'useragent' ];
+				if( isset( $options[ 'user-agent' ] ) )
+					$obj -> headers_sent[ 'User-Agent' ] = $options[ 'user-agent' ];
 			};
 
 		$obj -> setHooks =
@@ -5022,6 +5192,8 @@ class Wp
 				if( is_wp_error( $res ) )
 				{
 					$res -> add_data( $url, 'url' );
+					if( isset( $obj -> method ) )
+						$res -> add_data( $obj -> method, 'method' );
 					return( $res );
 				}
 
@@ -5042,7 +5214,7 @@ class Wp
 		if( !function_exists( 'wp_remote_get' ) )
 			return( null );
 
-		$obj = self::_RemoteGet_Ctx( $url, $args );
+		$obj = self::_RemoteGet_Ctx( $url, $args, 'GET' );
 
 		$obj -> setHooks( true );
 		$res = wp_remote_get( $url, $args );
@@ -5056,7 +5228,7 @@ class Wp
 		if( !function_exists( 'wp_remote_post' ) )
 			return( null );
 
-		$obj = self::_RemoteGet_Ctx( $url, $args );
+		$obj = self::_RemoteGet_Ctx( $url, $args, 'POST' );
 
 		$obj -> setHooks( true );
 		$res = wp_remote_post( $url, $args );
@@ -5075,7 +5247,7 @@ class Wp
 		if( !function_exists( 'wp_remote_request' ) )
 			return( null );
 
-		$obj = self::_RemoteGet_Ctx( $url, $args );
+		$obj = self::_RemoteGet_Ctx( $url, $args, $method );
 
 		$args[ 'method' ] = $method;
 
@@ -6404,6 +6576,211 @@ class Wp
 			require_once( ABSPATH . 'wp-admin/includes/file.php' );
 
 		return( get_home_path() );
+	}
+
+	static function _Cfg_Tokens_SetDefineVal( &$tokens, $name, $val )
+	{
+
+		$firstInsertPos = Php::Tokens_Find( $tokens, T_OPEN_TAG );
+		if( $firstInsertPos === false )
+		{
+			$tokensInsert = array();
+			$tokensInsert[] = array( Php::TI_ID => T_OPEN_TAG, Php::TI_CONTENT => Php::T_OPEN_TAG_CONTENT );
+			$tokensInsert[] = array( Php::TI_ID => T_WHITESPACE, Php::TI_CONTENT => PHP_EOL . PHP_EOL );
+
+			Php::Tokens_Insert( $tokens, count( $tokens ), $tokensInsert );
+
+			$firstInsertPos = count( $tokens );
+
+			unset( $tokensInsert );
+		}
+		else
+		{
+			$firstInsertPos++;
+
+			$firstInsertPos = Php::Tokens_Find( $tokens, array( 'e' => array( T_WHITESPACE ) ), null, $firstInsertPos );
+			if( $firstInsertPos === false )
+				$firstInsertPos = count( $tokens );
+		}
+
+		$definePos = false;
+		$defineValPos = false;
+		for( $i = $firstInsertPos; ; )
+		{
+			$i = Php::Tokens_Find( $tokens, T_STRING, 'define', $i );
+			if( $i === false )
+				break;
+
+			$iDefine = $i;
+			$i++;
+
+			$callArgs = Php::Tokens_GetCallArgs( $tokens, $i );
+			$iEnd = Php::Tokens_Find( $tokens, T_ELEMENT, ';', $i );
+			if( $iEnd === false )
+				continue;
+
+			$i = $iEnd + 1;
+
+			if( empty( $callArgs ) || count( $callArgs ) != 2 )
+				continue;
+
+			if( Php::Token_GetEncapsedStrVal( Php::Token_GetContent( Php::Tokens_CallArgs_GetSingleArg( $callArgs, 0 ), T_CONSTANT_ENCAPSED_STRING ) ) != $name )
+				continue;
+
+			if( $defineValPos === false )
+			{
+				$definePos = array( $iDefine, $i - $iDefine );
+				Php::Tokens_CallArgs_GetSingleArg( $callArgs, 1, $defineValPos );
+				continue;
+			}
+
+			array_splice( $tokens, $iDefine, $i - $iDefine );
+			$i = $iDefine;
+		}
+
+		$changed = false;
+
+		if( $defineValPos === false )
+		{
+			$tokensInsert = array();
+			$tokensInsert[] = array( Php::TI_ID => T_STRING, Php::TI_CONTENT => 'define' );
+			$tokensInsert[] = array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => '(' );
+			$tokensInsert[] = array( Php::TI_ID => T_CONSTANT_ENCAPSED_STRING, Php::TI_CONTENT => '\'' . $name . '\'' );
+			$tokensInsert[] = array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => ',' );
+			$tokensInsert[] = array( Php::TI_ID => T_WHITESPACE, Php::TI_CONTENT => ' ' );
+
+			{
+				$defineValPos = count( $tokensInsert );
+				$tokensInsert[] = array( Php::TI_ID => T_CONSTANT_ENCAPSED_STRING, Php::TI_CONTENT => '\'\'' );
+			}
+
+			$tokensInsert[] = array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => ')' );
+			$tokensInsert[] = array( Php::TI_ID => T_ELEMENT, Php::TI_CONTENT => ';' );
+			$tokensInsert[] = array( Php::TI_ID => T_WHITESPACE, Php::TI_CONTENT => PHP_EOL . PHP_EOL );
+
+			Php::Tokens_Insert( $tokens, $firstInsertPos, $tokensInsert );
+			$definePos = array( $firstInsertPos, count( $tokensInsert ) );
+			$defineValPos += $firstInsertPos;
+
+			unset( $tokensInsert );
+
+			$changed = true;
+		}
+
+		{
+
+			$tokenValNew = null;
+			switch( gettype( $val ) )
+			{
+			case 'string':
+				$token = $tokens[ $defineValPos ];
+
+				$cQuote = null;
+				if( $token[ Php::TI_ID ] == T_CONSTANT_ENCAPSED_STRING )
+					$cQuote = substr( $token[ Php::TI_CONTENT ], 0, 1 );
+
+				if( empty( $cQuote ) )
+					$cQuote = '\'';
+
+				$tokenValNew = array( Php::TI_ID => T_CONSTANT_ENCAPSED_STRING, Php::TI_CONTENT => $cQuote . $val . $cQuote );
+				break;
+
+			case 'boolean':
+				$tokenValNew = array( Php::TI_ID => T_STRING, Php::TI_CONTENT => $val ? 'true' : 'false' );
+				break;
+
+			case 'integer':
+				$tokenValNew = array( Php::TI_ID => T_LNUMBER, Php::TI_CONTENT => '' . $val );
+				break;
+
+			case 'double':
+				$tokenValNew = array( Php::TI_ID => T_DNUMBER, Php::TI_CONTENT => '' . $val );
+				break;
+
+			default:
+				return( false );
+				break;
+			}
+
+			if( $tokens[ $defineValPos ] != $tokenValNew )
+			{
+				$tokens[ $defineValPos ] = $tokenValNew;
+				$changed = true;
+			}
+		}
+
+		$inclPos = false;
+		for( $i = $firstInsertPos; ; )
+		{
+			$i = Php::Tokens_Find( $tokens, array( 'i' => array( T_REQUIRE, T_REQUIRE_ONCE, T_INCLUDE, T_INCLUDE_ONCE ) ), null, $i );
+			if( $i === false )
+				break;
+
+			$iInclude = $i;
+			$i++;
+
+			$iEnd = Php::Tokens_Find( $tokens, T_ELEMENT, ';', $i );
+			if( $iEnd === false )
+				continue;
+
+			$iArg = Php::Tokens_Find( $tokens, array( 'i' => array( T_CONSTANT_ENCAPSED_STRING ) ), array( '\'wp-settings.php\'' ), $i, $iEnd - $i );
+			if( $iEnd === false || $iArg > $iEnd )
+				continue;
+
+			$inclPos = array( $iInclude, $iEnd - $iInclude );
+			break;
+		}
+
+		if( $inclPos !== false && $inclPos[ 0 ] < $definePos[ 0 ] )
+		{
+			$tokensInsert = array_splice( $tokens, $definePos[ 0 ], $definePos[ 1 ] );
+			$tokensInsert[] = array( Php::TI_ID => T_WHITESPACE, Php::TI_CONTENT => PHP_EOL . PHP_EOL );
+			Php::Tokens_Insert( $tokens, $firstInsertPos, $tokensInsert );
+			unset( $tokensInsert );
+		}
+
+		return( true );
+	}
+
+	static function _Cfg_SetDefineValEx( &$fileContent, $name, $val )
+	{
+		$tokens = Php::Tokens_GetFromContent( $fileContent );
+		if( $tokens === false )
+		{
+
+			if( !Gen::StrStartsWith( $fileContent, '<?php' ) )
+				return( false );
+
+			$fileContent = "<?php\ndefine( '" . $name . "', " . var_export( $val, true ) . " );\n" . substr( $fileContent, 5 );
+			return( true );
+		}
+
+		if( !self::_Cfg_Tokens_SetDefineVal( $tokens, $name, $val ) )
+			return( false );
+
+		$fileContent = Php::Tokens_GetContent( $tokens );
+		return( true );
+	}
+
+	static function Cfg_SetDefineValEx( $file, $name, $val )
+	{
+		if( !file_exists( $file ) )
+			return( Gen::E_NOT_FOUND );
+
+		if( !is_writable( $file ) )
+			return( Gen::E_ACCESS_DENIED );
+
+		$fileContent = file_get_contents( $file );
+		if( !$fileContent )
+			return( Gen::E_ACCESS_DENIED );
+
+		if( !self::_Cfg_SetDefineValEx( $fileContent, $name, $val ) )
+			return( Gen::S_FALSE );
+
+		if( !is_integer( file_put_contents( $file, $fileContent, LOCK_EX ) ) )
+			return( Gen::E_FAIL );
+
+		return( Gen::S_OK );
 	}
 }
 

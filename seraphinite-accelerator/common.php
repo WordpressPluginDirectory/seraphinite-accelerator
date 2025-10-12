@@ -12,7 +12,7 @@ require_once( __DIR__ . '/Cmn/Db.php' );
 require_once( __DIR__ . '/Cmn/Img.php' );
 require_once( __DIR__ . '/Cmn/Plugin.php' );
 
-const PLUGIN_SETT_VER								= 148;
+const PLUGIN_SETT_VER								= 182;
 const PLUGIN_DATA_VER								= 1;
 const PLUGIN_EULA_VER								= 1;
 const QUEUE_DB_VER									= 4;
@@ -945,7 +945,274 @@ function OnOptRead_Sett( $sett, $verFrom )
 		Gen::SetArrField( $sett, array( 'cache', 'fastTmpOpt' ), false );
 	}
 
+	if( $verFrom && $verFrom < 149 )
+	{
+	    Gen::SetArrField( $sett, array( 'contPr', 'cp', 'hrrCntDwnTmr' ), false );
+	}
+
+	if( $verFrom && $verFrom < 150 )
+	{
+		{
+			$grpsExcl = Gen::GetArrField( $sett, array( 'contPr', 'grps', 'items', '@a', 'sklCssSelExcl' ), array() );
+			foreach( array(
+				'@\\.(?:product_cat|product_tag|video_tag|category|categories|tag|term|label-term|pa|label-attribute-pa|woocommerce-product-attributes-item-|comment-author)[\\-_]([\\w\\-]+)@i' =>
+					'@\\.(?:category|categories|tag|term|label-term|pa|label-attribute-pa|woocommerce-product-attributes-item-|comment-author|(?\'ENUM_TAXONOMIES_NOTBUILTIN\')|(?\'ENUM_POSTTYPES_NOTBUILTINVIEWABLESPEC\'))[\\-_]([\\w\\-]+)@i'
+				) as $f => $r )
+				if( ( $i = array_search( $f, $grpsExcl ) ) !== false )
+					$grpsExcl[ $i ] = $r;
+			Gen::SetArrField( $sett, array( 'contPr', 'grps', 'items', '@a', 'sklCssSelExcl' ), $grpsExcl );
+		}
+
+		Gen::SetArrField( $sett, array( 'cache', 'lazyInvFr' ), false );
+		Gen::SetArrField( $sett, array( 'cache', 'timeoutFrCln' ), 60 * 60 );
+	}
+
+	if( $verFrom && $verFrom < 151 )
+	{
+		{
+			$grpsExcl = Gen::GetArrField( $sett, array( 'contPr', 'grps', 'items', '@a', 'sklCssSelExcl' ), array() );
+			_UpdTokensArr( $grpsExcl, array( '@\\.kbx-((?\'POST_SLUG\'))@' => 0 ) );
+			Gen::SetArrField( $sett, array( 'contPr', 'grps', 'items', '@a', 'sklCssSelExcl' ), $grpsExcl );
+		}
+	}
+
+	if( $verFrom && $verFrom < 152 )
+	{
+		{
+			$grpsExcl = Gen::GetArrField( $sett, array( 'contPr', 'grps', 'items', '@a', 'sklCssSelExcl' ), array() );
+			_UpdTokensArr( $grpsExcl, array(
+				'@\\.kbx-((?\'POST_SLUG\'))@' =>
+					"r=pslg:@\\.(?:[\\-\\w]+[\\-\\_]|)((?'POST_SLUG'))[\\-\\_\\W]@i",
+
+				'@\\.(?:category|categories|tag|term|label-term|pa|label-attribute-pa|woocommerce-product-attributes-item-|comment-author|(?\'ENUM_TAXONOMIES_NOTBUILTIN\')|(?\'ENUM_POSTTYPES_NOTBUILTINVIEWABLESPEC\'))[\\-_]([\\w\\-]+)@i' =>
+					"@\\.(?:[\\-\\w]+[\\-\\_]|)(?:category|categories|tag|term|comment-author|(?'ENUM_TAXONOMIES_NOTBUILTIN'))[\\-\\_]([\\w\\-]+)@i",
+
+				"@\\.(?:[\\-\\w]+[\\-\\_]|)(?:post|page|attachment|(?'ENUM_POSTTYPES_NOTBUILTINVIEWABLESPEC'))[\\-\\_]([\\w\\-]+)@i" =>
+					array( "@\\.(?:[\\-\\w]+[\\-\\_]|)(?:category|categories|tag|term|comment-author|(?'ENUM_TAXONOMIES_NOTBUILTIN'))[\\-\\_]([\\w\\-]+)@i", 1 ),
+
+				"r=txnm:@\\.(?:[\\-\\w]+[\\-\\_]|)(category|(?'ENUM_TAXONOMIES_NOTBUILTIN'))[\\-\\_\\W]@i" =>
+					array( "@\\.(?:[\\-\\w]+[\\-\\_]|)(?:category|categories|tag|term|comment-author|(?'ENUM_TAXONOMIES_NOTBUILTIN'))[\\-\\_]([\\w\\-]+)@i", 1 ),
+			) );
+			Gen::SetArrField( $sett, array( 'contPr', 'grps', 'items', '@a', 'sklCssSelExcl' ), $grpsExcl );
+		}
+	}
+
+	if( $verFrom && $verFrom < 157 )
+		Gen::SetArrField( $sett, array( 'cache', 'srvUpd' ), false );
+
+	if( $verFrom && $verFrom < 158 )
+	{
+		Gen::SetArrField( $sett, array( 'cache', 'updGlobs', 'op' ), Gen::GetArrField( $sett, array( 'cache', 'updTermsOp' ) ) );
+		unset( $sett[ 'cache' ][ 'updTermsOp' ] );
+
+		Gen::SetArrField( $sett, array( 'cache', 'updGlobs', 'terms', 'enable' ), Gen::GetArrField( $sett, array( 'cache', 'updTerms' ) ) );
+		unset( $sett[ 'cache' ][ 'updTerms' ] );
+
+		Gen::SetArrField( $sett, array( 'cache', 'updGlobs', 'terms', 'deps' ), Gen::GetArrField( $sett, array( 'cache', 'updTermsDeps' ) ) );
+		unset( $sett[ 'cache' ][ 'updTermsDeps' ] );
+	}
+
+	if( $verFrom && $verFrom < 159 )
+	{
+		foreach( Gen::GetArrField( $sett, array( 'cache', 'data', 'items' ) ) as $k => $itemData )
+		{
+			foreach( array( 'exclArgsAll', 'exclArgs', 'skipArgsEnable', 'skipArgsAll', 'skipArgs' ) as $fld )
+				Gen::SetArrField( $itemData, array( $fld ), Gen::GetArrField( $sett, array( 'cache', $fld ) ) );
+			Gen::SetArrField( $sett, array( 'cache', 'data', 'items', $k ), $itemData );
+		}
+	}
+
+	if( $verFrom && $verFrom < 162 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'cp', 'diviMv' ), false );
+		Gen::SetArrField( $sett, array( 'contPr', 'cp', 'diviSld' ), false );
+	}
+
+	if( $verFrom && $verFrom < 163 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'cp', 'elmntrWdgtEaelCntdwn' ), false );
+	}
+
+	if( $verFrom && $verFrom < 164 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'img', 'szAdaptDprMin' ), 100 );
+		Gen::SetArrField( $sett, array( 'contPr', 'img', 'lazy', 'plchRast' ), true );
+
+		{
+			$fld = array( 'cache', 'viewsCompatGrps', 0, 'agents' );
+			$a = Gen::GetArrField( $sett, $fld, array() );
+			_UpdTokensArr( $a, array(
+				'@\\Wmsie \\d+\\.\\d+\\W@' =>
+					'@\\Wmsie \\d+\\.\\d+\\W@i',
+
+				'@\\Wtrident/\\d+\\.\\d+\\W@' =>
+					'@\\Wtrident/\\d+\\.\\d+\\W@i',
+
+				'@\\Wyandexmetrika/\\d+\\.\\d+\\W@' =>
+					'@\\Wyandexmetrika/\\d+\\.\\d+\\W@i',
+
+				'@\\Wgoogleadsenseinfeed\\W@' =>
+					'@\\Wgoogleadsenseinfeed\\W@i',
+
+				'!@\\Wchrome/\\d+\\W@ & @(?:\\W|^)safari/([\\d\\.]+)(?:\\W|$)@ < 603.3.8' =>
+					'!@\\WChrome/\\d+\\W@i & @(?:\\W|^)Safari/([\\d\\.]+)(?:\\W|$)@i < 603.3.8',
+
+				'@\\sMac\\sOS\\sX\\s([\\d\\_]+)@i < 10.12.6' =>
+					'!@\\WChrome/\\d+\\W@i & @\\sMac\\sOS\\sX\\s([\\d\\_]+)@i < 10.12.6',
+
+				'!@\\Wchrome/\\d+\\W@ & @(?:\\W|^)safari/([\\d\\.]+)(?:\\W|$)@' =>
+					'!@\\WChrome/\\d+\\W@i & @(?:\\W|^)Safari/([\\d\\.]+)(?:\\W|$)@i',
+
+				'@\\sMac\\sOS\\sX\\s([\\d\\_]+)@i' =>
+					'!@\\WChrome/\\d+\\W@i & @\\sMac\\sOS\\sX\\s([\\d\\_]+)@i',
+			) );
+			Gen::SetArrField( $sett, $fld, $a );
+		}
+	}
+
+	if( $verFrom && $verFrom < 165 )
+	{
+	    Gen::SetArrField( $sett, array( 'contPr', 'cp', 'wooOuPrdGal' ), false );
+	}
+
+	if( $verFrom && $verFrom < 166 )
+	{
+	    Gen::SetArrField( $sett, array( 'contPr', 'cp', 'wooPrdGallSldBde' ), false );
+	    Gen::SetArrField( $sett, array( 'contPr', 'cp', 'elmntrWdgtAniHdln' ), false );
+	}
+
+	if( $verFrom && $verFrom < 167 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'cp', 'wooPrdGall' ), Gen::GetArrField( $sett, array( 'contPr', 'cp', 'wooPrdGallSldBde' ), false ) || Gen::GetArrField( $sett, array( 'contPr', 'cp', 'elmntrWdgtWooPrdImgs' ), false ) );
+		Gen::UnsetArrField( $sett, array( 'contPr', 'cp', 'wooPrdGallSldBde' ) );
+		Gen::UnsetArrField( $sett, array( 'contPr', 'cp', 'elmntrWdgtWooPrdImgs' ) );
+	}
+
+	if( $verFrom && $verFrom < 168 )
+	{
+	    Gen::SetArrField( $sett, array( 'contPr', 'cp', 'wooPrdGallAstrThmbsHeight' ), false );
+	}
+
+	if( $verFrom && $verFrom < 169 )
+	{
+	    Gen::SetArrField( $sett, array( 'contPr', 'cp', 'wooPrdGallFltsmThmbs' ), false );
+	}
+
+	if( $verFrom && $verFrom < 172 )
+	{
+		{
+			$fld = array( 'cache', 'updPostDeps' );
+			$a = Gen::GetArrField( $sett, $fld, array() );
+			_UpdTokensArr( $a, array(
+				'@post@{ID}:@pageNums' =>
+					'@post@{ID}:@P@LOW:@pageNums',
+
+				'@post@{ID}:@commentPageNums' =>
+					'@post@{ID}:@P@LOW:@commentPageNums',
+
+				'@postsBase@{post_type}:<|@pageNums|@commentPageNums>' =>
+					'@postsBase@{post_type}:<|@P@LOW:@pageNums|@P@LOW:@commentPageNums>',
+
+				'@postsBase@{post_type}:<|@pageNums>' =>
+					'@postsBase@{post_type}:<|@P@LOW:@pageNums>',
+
+				'@termsOfClass@categories@{post_type}@{ID}:<|@pageNums|@commentPageNums>' =>
+					'@P@LOW:@termsOfClass@categories@{post_type}@{ID}:<|@pageNums|@commentPageNums>',
+
+				'@termsOfClass@categories@{post_type}@{ID}:<|@pageNums>' =>
+					'@P@LOW:@termsOfClass@categories@{post_type}@{ID}:<|@pageNums>',
+			) );
+			Gen::SetArrField( $sett, $fld, $a );
+		}
+	}
+
+	if( $verFrom && $verFrom < 174 )
+	{
+	    Gen::SetArrField( $sett, array( 'contPr', 'cp', 'kpPsvStls' ), false );
+
+		Gen::SetArrField( $sett, array( 'cache', 'ctxLazyInv' ), false );
+	}
+
+	if( $verFrom && $verFrom < 175 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'cp', 'elmntrWdgtCntdwn' ), false );
+	}
+
+	if( $verFrom && $verFrom < 176 )
+	{
+		Gen::SetArrField( $sett, array( 'asyncSmpOpt' ), false );
+	}
+
+	if( $verFrom && $verFrom < 177 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'cp', 'xstrThSwpr' ), false );
+	}
+
+	if( $verFrom && $verFrom < 178 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'cp', 'wooGsPrdGal' ), false );
+	}
+
+	if( $verFrom && $verFrom < 179 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'css', 'skipBad' ), false );
+		Gen::SetArrField( $sett, array( 'contPr', 'js', 'skipBad' ), false );
+	}
+
+	if( $verFrom && $verFrom < 180 )
+	{
+		if( isset( $sett[ 'cache' ][ '_vPth' ] ) )
+		{
+			$a = array();
+			foreach( Gen::GetArrField( $sett, array( 'cache', '_vPth' ), array() ) as $v )
+				if( strpos( ( string )($v[ 'r' ]??null), 'wph-throw-' ) === false )
+					$a[] = $v;
+			Gen::SetArrField( $sett, array( 'cache', '_vPth' ), base64_encode( serialize( $a ) ) );
+		}
+	}
+
+	if( $verFrom && $verFrom < 181 )
+	{
+		Gen::SetArrField( $sett, array( 'contPr', 'cp', 'elmntrWdgtTmFnfctCntr' ), false );
+	}
+
+	if( $verFrom && $verFrom < 182 )
+	{
+	    Gen::SetArrField( $sett, array( 'contPr', 'cp', 'wooPrdGallCrftThmbs' ), false );
+	}
+
 	return( $sett );
+}
+
+function _UpdTokensArr( &$a, $aItem )
+{
+	foreach( $aItem as $item => $action )
+	{
+		if( $action === true )
+		{
+			if( !in_array( $item, $a ) )
+				$a[] = $item;
+		}
+		else if( is_integer( $action ) )
+		{
+			if( !in_array( $item, $a ) )
+				array_splice( $a, $action, 0, array( $item ) );
+		}
+		else if( is_string( $action ) )
+		{
+			if( ( $i = array_search( $item, $a ) ) !== false )
+				$a[ $i ] = $action;
+		}
+		else if( is_array( $action ) )
+		{
+			if( !in_array( $item, $a ) )
+			{
+				if( ( $i = array_search( $action[ 0 ], $a ) ) !== false )
+					array_splice( $a, $i + $action[ 1 ], 0, array( $item ) );
+
+			}
+		}
+	}
 }
 
 function Op_DepItems_MigrateFromOld( $dependItems )
@@ -974,14 +1241,20 @@ function OnAsyncTasksGetFile()
 	return( GetCacheDir() . '/at' );
 }
 
-function OnAsyncTasksGetPushUrlFile()
+function OnAsyncTasksGetPushUrlFile( $bForceIdx = false )
 {
-	return( Gen::GetArrField( Plugin::SettGetGlobal(), array( 'asyncUseCron' ), true ) ? 'wp-cron.php' : 'index.php' );
+	return( !$bForceIdx && Gen::GetArrField( Plugin::SettGetGlobal(), array( 'asyncUseCron' ), true ) ? 'wp-cron.php' : 'index.php' );
 }
 
 function OnAsyncTasksUseCmptNbr()
 {
 	return( Gen::GetArrField( Plugin::SettGetGlobal(), array( 'asyncUseCmptNbr' ), false ) );
+}
+
+function OnAsyncTasksSetNeededHdrs( $aSrv, $aHdr )
+{
+	CacheExt_Clear_CopyHdrs( $aSrv );
+	return( array_merge( Net::GetRequestHeaders( $aSrv, true, false, CacheExt_Clear_CopyHdrsArr() ), $aHdr ) );
 }
 
 function OnAsyncTasksPushGetMode( $settGlob = null )
@@ -1014,12 +1287,14 @@ function OnOptGetDef_Sett()
 			'enable' => true,
 
 			'normAgent' => true,
-			'chkNotMdfSince' => true,
+			'chkNotMdfSince' => false,
 			'cntLen' => true,
 			'opAgentPostpone' => true,
 
 			'srv' => true,
 			'srvClr' => true,
+			'srvUpd' => true,
+			'srvUpdTimeout' => 5,
 			'nginx' => array(
 				'method'=> '3rdp',
 				'url' => '',
@@ -1040,6 +1315,7 @@ function OnOptGetDef_Sett()
 			'lazyInvForcedTmp' => false,
 			'lazyInvTmp' => false,
 			'fastTmpOpt' => true,
+			'lazyInvFr' => true,
 
 			'updPost' => true,
 			'updPostDelay' => 0,
@@ -1055,14 +1331,41 @@ function OnOptGetDef_Sett()
 			'updPostMetaExcl' => array(
 				'@^\\d+$@',
 				'@^_edit_lock$@',
+				'@^_edit_last$@',
 				'@^classic-editor-remember$@',
 				'@post_views_@',
 				'@^import_started_at@',
+				'@^_wc_gla_@',
+				'@^_yoast_@',
+				'@^cwg_total_subscribers@',
+				'@^_backorders$@',
+				'@^_last_seen$@',
 			),
 
-			'updTerms' => false,
-			'updTermsOp' => 2,
-			'updTermsDeps' => array( 'category', 'product_cat', 'course_cat' ),
+			'updGlobs' => array(
+				'op' => 0,
+
+				'terms' => array(
+					'enable' => false,
+					'deps' => array( 'category', 'product_cat', 'course_cat' ),
+				),
+
+				'menu' => array(
+					'enable' => false,
+				),
+
+				'elmntrTpl' => array(
+					'enable' => false,
+				),
+
+				'tblPrss' => array(
+					'enable' => false,
+				),
+
+				'flntFrm' => array(
+					'enable' => false,
+				),
+			),
 
 			'updAllDeps' => array(
 				'@home',
@@ -1103,7 +1406,9 @@ function OnOptGetDef_Sett()
 			'timeout' => 7 * 24 * 60,
 			'timeoutFr' => 60,
 			'timeoutCln' => 182 * 24 * 60,
+			'timeoutFrCln' => 60 * 60,
 			'ctxTimeoutCln' => 15 * 24 * 60,
+			'extObjTimeoutCln' => 7 * 24 * 60,
 			'autoClnPeriod' => 24 * 60,
 			'useTimeoutClnForWpNonce' => true,
 
@@ -1124,7 +1429,7 @@ function OnOptGetDef_Sett()
 			'urisExcl' => array(
 				'/checkout/',
 				'@.*sitemap\.xsl$@',
-				'@page/@',
+				'@(?:^|/)page/@',
 			),
 			'exclAgents' => array(
 				'printfriendly',
@@ -1143,11 +1448,12 @@ function OnOptGetDef_Sett()
 				'seopress_paged',
 				'sitemap',
 				'sitemap_n',
+				'elementor-preview',
 			),
 
 			'skipArgsEnable' => false,
 			'skipArgsAll' => false,
-			'skipArgs' => array( 'redirect_to', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'story_fbid', 'mibextid', 'gclid', 'wbraid', 'gbraid', '_ga', 'yclid', 'srsltid' ),
+			'skipArgs' => array( 'redirect_to', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'story_fbid', 'mibextid', 'gclid', 'wbraid', 'gbraid', 'gad_campaignid', 'gad_source', '_ga', 'yclid', 'srsltid' ),
 
 			'exclConts' => array(
 			),
@@ -1156,12 +1462,15 @@ function OnOptGetDef_Sett()
 				'@^Set-Cookie\\s*:\\s*wordpress_test_cookie\\s*=@i',
 				'@^X-XSS-Protection\\s*:@i',
 				'@^X-Frame-Options\\s*:@i',
+				'@^X-Robots-Tag\\s*:@i',
 				'@^Content-Security-Policy\\s*:@i',
 				'@^Strict-Transport-Security\\s*:@i',
 				'@^Referrer-Policy\\s*:@i',
 				'@^Feature-Policy\\s*:@i',
 				'@^Permissions-Policy\\s*:@i',
 				'@^Cf-Edge-Cache\\s*:@i',
+				'@^Ec-Cdn-@i',
+
 			),
 
 			'views' => true,
@@ -1198,12 +1507,12 @@ function OnOptGetDef_Sett()
 					'enable' => true,
 					'id' => 'c',
 					'agents' => array(
-						'@\\Wmsie \\d+\\.\\d+\\W@',
-						'@\\Wtrident/\\d+\\.\\d+\\W@',
-						'@\\Wyandexmetrika/\\d+\\.\\d+\\W@',
-						'@\\Wgoogleadsenseinfeed\\W@',
-						'!@\\Wchrome/\\d+\\W@ & @(?:\\W|^)safari/([\\d\\.]+)(?:\\W|$)@ < 603.3.8',
-						'@\\sMac\\sOS\\sX\\s([\\d\\_]+)@i < 10.12.6',
+						'@\\Wmsie \\d+\\.\\d+\\W@i',
+						'@\\Wtrident/\\d+\\.\\d+\\W@i',
+						'@\\Wyandexmetrika/\\d+\\.\\d+\\W@i',
+						'@\\Wgoogleadsenseinfeed\\W@i',
+						'!@\\WChrome/\\d+\\W@i & @(?:\\W|^)Safari/([\\d\\.]+)(?:\\W|$)@i < 603.3.8',
+						'!@\\WChrome/\\d+\\W@i & @\\sMac\\sOS\\sX\\s([\\d\\_]+)@i < 10.12.6',
 					),
 				),
 
@@ -1252,6 +1561,12 @@ function OnOptGetDef_Sett()
 
 				array(
 					'enable' => true,
+					'name' => 'Aelia Currency Switcher',
+					'cookies' => array( 'aelia_cs_selected_currency' ),
+				),
+
+				array(
+					'enable' => true,
 					'name' => 'GDPR Cookie Consent',
 					'cookies' => array( 'viewed_cookie_policy', 'cli_user_preference' ),
 				),
@@ -1292,6 +1607,7 @@ function OnOptGetDef_Sett()
 			'ctxSessSep' => true,
 			'ctxContPr' => true,
 			'ctxCliRefresh' => true,
+			'ctxLazyInv' => false,
 			'ctxGrps' => array(
 				'common' => array(
 					'enable' => true,
@@ -1386,12 +1702,70 @@ function OnOptGetDef_Sett()
 
 					),
 				),
+
+				'cmsrush' => array(
+					'enable' => true,
+					'name' => 'CMS Rush',
+
+					'cookies' => array(
+						'cmsrush_',
+					),
+				),
+			),
+
+			'data' => array(
+				'items' => array(
+				),
 			),
 		),
 
 		'cacheBr' => array(
 			'enable' => true,
-			'timeout' => 30 * 24 * 60,
+			'timeout' => 365 * 24 * 60,
+		),
+
+		'cacheObj' => array(
+			'enable' => false,
+			'forceDropin' => false,
+			'timeout' => 24 * 60 * 60,
+
+			'groupsGlobal' => array(
+				'blog-details',
+				'blog-id-cache',
+				'blog-lookup',
+				'global-posts',
+				'networks',
+				'rss',
+				'sites',
+				'site-details',
+				'site-lookup',
+				'site-options',
+				'site-transient',
+				'users',
+				'useremail',
+				'userlogins',
+				'usermeta',
+				'user_meta',
+				'userslugs',
+
+				'blog_meta',
+				'image_editor',
+				'network-queries',
+				'site-queries',
+				'theme_files',
+				'translation_files',
+				'user-queries',
+			),
+
+			'groupsNonPersistent' => array(
+				'comment',
+				'counts',
+				'plugins',
+				'theme_json',
+				'themes',
+				'trp',
+				'wc_session_id',
+			),
 		),
 
 		'contPr' => array(
@@ -1407,14 +1781,47 @@ function OnOptGetDef_Sett()
 				'cmtsExcl' => array(
 					'@^\\s*/?noindex\\s*$@i',
 					'@\\[et-ajax\\]@i',
+					'@^\\s*\\[if\\s@i',
+					'@\\[endif\\]\\s*$@i',
+					'@fwp-loop@i',
+
+					'@data-map-zoom@i',
 				),
 				'items' => array(
+					'.//img/@loading',
+					'.//iframe/@loading',
 					'.//link[@rel="preload"][@as="font"][not(self::node()[@seraph-accel-crit="1"])]',
+					'.//link[@rel="modulepreload"][not(self::node()[@seraph-accel-crit="1"])]',
 				),
 			),
 			'rpl' => array(
 				'items' => array(
+					array(
+						'enable' => true,
+						'expr' => '@<link\\s+rel="stylesheet"[^>]+(consent-original-href-_)=[^>]+>@',
+						'data' => 'href'
+					),
+					array(
+						'enable' => true,
+						'expr' => '@<body[^>]+(cm-manage-google-fonts)[^>]+>@',
+						'data' => ''
+					)
 				),
+			),
+
+			'rc' => array(
+				'thmFltsm' => true,
+				'gglTrn' => true,
+				'aksmtAs' => true,
+				'advWooSrch' => true,
+				'jetMblMnu' => true,
+				'wpelLnk' => true,
+				'cfTrnstl' => true,
+				'tagGrpsShfflBx' => true,
+				'g5Ere' => true,
+				'elmntrTrx' => true,
+				'thmXStr' => true,
+				'wooPrdQnt' => true,
 			),
 
 			'lazy' => array(
@@ -1429,6 +1836,7 @@ function OnOptGetDef_Sett()
 				'items' => array(
 					'sa:.//*[contains(concat(" ",normalize-space(@class)," ")," wpforms-container ")]',
 					'sa:.//*[contains(concat(" ",normalize-space(@class)," ")," wfacp_checkout_form ")]',
+					'sa:.//form[contains(concat(" ",normalize-space(@class)," ")," wpcf7-form ")]',
 				),
 			),
 
@@ -1443,7 +1851,7 @@ function OnOptGetDef_Sett()
 				'deinlLrgSize' => 2048,
 				'redirOwn' => false,
 				'redirCacheAdapt' => false,
-				'comprAsync' => true,
+				'comprAsync' => false,
 				'webp' => array(
 					'enable' => true,
 					'redir' => true,
@@ -1470,14 +1878,20 @@ function OnOptGetDef_Sett()
 				),
 				'szAdaptBgCxMin' => 0,
 				'szAdaptDpr' => true,
+				'szAdaptDprMin' => 100,
 				'excl' => array(
 					'.//svg[contains(concat(" ",normalize-space(@class)," ")," lottgen ")][contains(concat(" ",normalize-space(@class)," ")," js-lzl-ing ")]/image',
+					'.//meta[@property]',
+					'.//img[@uk-svg]',
+					'.//img[@name="zsCaptchaImage"]',
+					'.//img[contains(@src,"arttrk.com/pixel")]',
 				),
 				'lazy' => array(
 					'setSize' => false,
 					'load' => true,
 					'own' => true,
 					'smoothAppear' => true,
+					'plchRast' => true,
 					'del3rd' => true,
 					'excl' => array(
 
@@ -1493,7 +1907,11 @@ function OnOptGetDef_Sett()
 			),
 
 			'frm' => array(
-				'excl' => array(),
+				'excl' => array(
+					'ajs:.//*[contains(concat(" ",normalize-space(@class)," ")," wprm-recipe-video ")]/iframe',
+					'ajs:.//iframe[contains(@src,"/maps")]',
+					'ajs:.//iframe[contains(concat(" ",normalize-space(@class)," ")," rezdy ")]',
+				),
 				'lazy' => array(
 					'enable' => true,
 					'own' => true,
@@ -1554,12 +1972,15 @@ function OnOptGetDef_Sett()
 				'elmntrPremCrsl' => true,
 				'elmntrWdgtGal' => true,
 				'elmntrWdgtImgCrsl' => true,
-				'elmntrWdgtWooPrdImgs' => true,
 				'elmntrWdgtCntr' => true,
+				'elmntrWdgtCntdwn' => true,
+				'elmntrWdgtEaelCntdwn' => true,
+				'elmntrWdgtTmFnfctCntr' => true,
 				'elmntrWdgtAvoShcs' => true,
 				'elmntrWdgtLott' => true,
 				'elmntrWdgtPrmLott' => true,
 				'nktrLott' => true,
+				'elmntrWdgtAniHdln' => true,
 				'elmntrStck' => false,
 				'elmntrShe' => false,
 				'elmntrStrtch' => true,
@@ -1567,9 +1988,12 @@ function OnOptGetDef_Sett()
 				'phtncThmb' => true,
 				'jetMobMenu' => true,
 				'jetLott' => true,
+				'kpPsvStls' => true,
+				'diviMv' => true,
+				'diviSld' => true,
 				'diviMvImg' => false,
-				'diviMvText' => true,
-				'diviMvSld' => true,
+				'diviMvText' => false,
+				'diviMvSld' => false,
 				'diviMvFwHdr' => true,
 				'diviVidBox' => true,
 				'diviVidBg' => true,
@@ -1588,6 +2012,8 @@ function OnOptGetDef_Sett()
 				'woodmartPrcFlt' => true,
 				'wooPrcFlt' => true,
 				'wbwPrdFlt' => true,
+				'wooOuPrdGal' => true,
+				'wooGsPrdGal' => true,
 				'wooJs' => true,
 				'wpStrs' => true,
 				'txpTagGrps' => true,
@@ -1616,12 +2042,18 @@ function OnOptGetDef_Sett()
 				'jqSldNivo' => true,
 				'wooSctrCntDwnTmr' => true,
 				'strmtbUpcTmr' => true,
+				'hrrCntDwnTmr' => true,
 				'lottGen' => true,
 				'sprflMenu' => true,
 				'jqJpPlr' => true,
 				'prstPlr' => true,
 				'grnshftPbAosOnceAni' => true,
 				'grnshftPbAosAni' => true,
+				'wooPrdGall' => true,
+				'wooPrdGallAstrThmbsHeight' => true,
+				'wooPrdGallFltsmThmbs' => true,
+				'wooPrdGallCrftThmbs' => true,
+				'xstrThSwpr' => true,
 
 			),
 
@@ -1633,8 +2065,16 @@ function OnOptGetDef_Sett()
 				'groupExclMdls' => true,
 				'groupExcls' => array(
 					'src:@stripe@',
+
 					'src:@\\.hsforms\\.net\\W@',
-					'src:@//cdnjs\\.cloudflare\\.com/ajax/libs/bodymovin/[\\d\\.]+/lottie\\.@'
+					'body:@window\\.hsFormsOnReady@',
+					'body:@hbspt\\.forms\\.create@',
+
+					'src:@//cdnjs\\.cloudflare\\.com/ajax/libs/bodymovin/[\\d\\.]+/lottie\\.@',
+					'src:@/plugins/zippy-form/public/js/flatpickr\\.@',
+					'id:@^wd-swiper-library-js@',
+					'src:@\\Wtrustedshops\\.com\\W@',
+					'body:@currentScript\\s*\\.\\s*getAttribute\\(\\s*\'data-gt-widget-id\'@',
 				),
 
 				'min' => false,
@@ -1663,11 +2103,20 @@ function OnOptGetDef_Sett()
 
 						'.//*[contains(concat(" ",normalize-space(@class)," ")," n2-ss-slider ")]//*[contains(concat(" ",normalize-space(@class)," ")," nextend-arrow ")]',
 						'.//*[contains(concat(" ",normalize-space(@class)," ")," n2-ss-slider ")]//*[contains(concat(" ",normalize-space(@class)," ")," n2-bullet ")]',
+
+						'.//a[contains(concat(" ",normalize-space(@class)," ")," woocommerce-loop-product__link ")]',
+
+						'ifExistsThenCssSel(.//script[@id="cookieyes"],".cky-btn")',
+
+						'.//*[@data-map-zoom]',
 					),
 
 					'exclDef' => array(
 						'.//a[@href="#"]',
 						'.//a[@href="#link-popup"]',
+						'.//a[@onclick]',
+
+						'.//button',
 
 						'.//*[starts-with(@href,"#elementor-action")]',
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," mobile-menu ")]',
@@ -1679,7 +2128,7 @@ function OnOptGetDef_Sett()
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," elementor-icon ")]',
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," wd-open-popup ")]',
 						'.//a[starts-with(@href,"#grve-")]',
-						'.//button[contains(concat(" ",normalize-space(@class)," ")," elementskit-menu-toggler ")]',
+
 						'.//a[starts-with(@href,"#")][contains(concat(" ",normalize-space(@class)," ")," infinite-mm-menu-button ")]',
 						'.//*[contains(concat(" ",normalize-space(@class)," ")," elementor-swiper-button ")]',
 
@@ -1687,7 +2136,6 @@ function OnOptGetDef_Sett()
 						'.//*[contains(concat(" ",normalize-space(@class)," ")," jet-menu-item ")]/a[contains(concat(" ",normalize-space(@class)," ")," menu-link ")]',
 
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," ajax_add_to_cart ")]',
-						'.//button[contains(concat(" ",normalize-space(@class)," ")," single_add_to_cart_button ")]',
 
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," dt-mobile-menu-icon ")]',
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," submit ")]',
@@ -1708,23 +2156,23 @@ function OnOptGetDef_Sett()
 
 						'.//*[contains(concat(" ",normalize-space(@class)," ")," product-video-button ")]/a',
 
-						'.//button[contains(concat(" ",normalize-space(@class)," ")," menu-toggle ")]',
-
 						'.//a[@data-fslightbox="gallery"]',
 
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," dvmm_button ")]',
 
-						'.//div[@data-thumb]//a',
+						'click:.//div[@data-thumb]//a',
 
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," searchOpen ")]',
 
-						'.//button[contains(concat(" ",normalize-space(@class)," ")," uicore-toggle ")]',
-
 						'.//a[contains(concat(" ",normalize-space(@class)," ")," bricks-button ")]',
 
-						'.//button[contains(concat(" ",normalize-space(@class)," ")," e-n-menu-toggle ")]',
-
 						'.//img[contains(concat(" ",normalize-space(@class)," ")," swiper-slide-image ")]',
+
+						'.//*[contains(concat(" ",normalize-space(@class)," ")," e-click ")]',
+
+						'.//a[contains(concat(" ",normalize-space(@class)," ")," wd-load-more ")]',
+
+						'click:.//presto-player | .//presto-player-js-lzl-ing || .//presto-playlist | .//presto-playlist-js-lzl-ing',
 					),
 				),
 
@@ -1755,6 +2203,12 @@ function OnOptGetDef_Sett()
 						'body:@\\WTypekit\\.load\\(@',
 
 						'body:@\\Wdocument\\s*\\.\\s*querySelector\\s*\\(\\s*"\\.jdgm-rev-widg"\\s*\\)@',
+
+						'body:@window\\s*\\.\\s*gtranslateSettings\\s*=@',
+
+						'src:@trustindex\\.io/assets/js/richsnippet@',
+
+						'src:@web\\.cmp\\.usercentrics\\.eu/@',
 					),
 
 					'timeout' => array(
@@ -1774,6 +2228,12 @@ function OnOptGetDef_Sett()
 						'src:@\\.cookiebot\\.com@',
 
 						'id:@^cookieyes$@',
+
+						'src:@\\.elfsight\\.com/platform/@',
+
+						'src:@\\.elfsight\\.com/platform/@',
+
+						'src:@/gtranslate/@',
 					),
 				),
 
@@ -1787,6 +2247,7 @@ function OnOptGetDef_Sett()
 
 					),
 				),
+				'skipBad' => true,
 				'skips' => array(),
 			),
 
@@ -1800,11 +2261,16 @@ function OnOptGetDef_Sett()
 				'groupFont' => true,
 				'groupFontCombine' => true,
 				'font' => array(
+					'inl' => array(
+						'enable' => true,
+						'items' => array(),
+					),
+
 					'deinlLrg' => true,
 					'deinlLrgSize' => 512,
+
 					'optLoadNameExpr' => '',
 				),
-				'fontPreload' => false,
 
 				'sepImp' => true,
 				'min' => true,
@@ -1821,6 +2287,8 @@ function OnOptGetDef_Sett()
 						'@depicter@',
 
 						'@\\.n2-ss-@',
+
+						'@\\.slick-dots@',
 
 						'@\\.show-mobile-header@',
 
@@ -1848,12 +2316,18 @@ function OnOptGetDef_Sett()
 				'fontOptLoadDisp' => 'swap',
 				'fontCrit' => true,
 
+				'skipBad' => true,
 				'skips' => array(
 					'id:@^reycore-critical-css$@',
 				),
 
 				'custom' => array(
 					'0' => array( 'enable' => true, 'data' => '' ),
+
+					'preloaders'	=> array( 'enable' => true,		'descr' => 'Preloaders',				'data' => "#pre-load, #preloader, #page_preloader, #page-preloader, #loader-wrapper, #royal_preloader, #loftloader-wrapper, #page-loading, #the7-body > #load, #loader, #loaded, #loader-container,\r\n.rokka-loader, .page-preloader-cover, .apus-page-loading, .medizco-preloder, e-page-transition, .loadercontent, .shadepro-preloader-wrap, .tslg-screen, .page-preloader, .pre-loading, .preloader-outer, .page-loader, .martfury-preloader, body.theme-dotdigital > .preloader, .loader-wrap, .site-loader, .pix-page-loading-bg, .pix-loading-circ-path, .mesh-loader, .lqd-preloader-wrap, .rey-sitePreloader, .et-loader, .preloader-plus, .plwao-loader-wrap {\r\n\tdisplay: none !important;\r\n}\r\n\r\nbody.royal_preloader {\r\n\tvisibility: hidden !important;\r\n}\r\n\r\n/*html body > :not(.preloader-plus) {\r\n\topacity: unset;\r\n}*/" ),
+
+					'htmlGen'		=> array( 'enable' => true,		'descr' => 'Generic HTML',					'data' => "html, html.async-hide, body {\r\n\tdisplay: block !important;\r\n\topacity: 1 !important;\r\n\tvisibility: unset !important;\r\n}" ),
+
 					'jet-menu'		=> array( 'enable' => false,	'descr' => 'Jet Menu',					'data' => ".seraph-accel-js-lzl-ing ul.jet-menu > li[id^=jet-menu-item-] {\n\tdisplay: none!important;\n}" ),
 					'jet-testimonials'		=> array( 'enable' => true,	'descr' => 'Jet Testimonials',	'data' => ".jet-testimonials__instance:not(.slick-initialized) .jet-testimonials__item {\r\n\tmax-width: 100%;\r\n}\r\n\r\n.jet-testimonials__instance:not(.slick-initialized) .jet-testimonials__item:nth-child(n+4) {\r\n\tdisplay: none !important;\r\n}" ),
 					'xo-slider'		=> array( 'enable' => true,		'descr' => 'XO Slider',					'data' => ".xo-slider .slide-content {\n\tdisplay: unset!important;\n}" ),
@@ -1869,8 +2343,6 @@ function OnOptGetDef_Sett()
 					'n2-ss-slider'	=> array( 'enable' => false,		'descr' => 'Smart Slider',				'data' => "ss3-force-full-width, ss3-fullpage {\r\n\ttransform: none !important;\r\n\topacity: 1 !important;\r\n\twidth: var(--seraph-accel-client-width) !important;\r\n\tmargin-left: calc((100% - var(--seraph-accel-client-width)) / 2);\r\n}\r\n\r\nss3-fullpage {\r\n\theight: 100vh !important;\r\n}\r\n\r\nbody.seraph-accel-js-lzl-ing .n2-ss-align {\r\n\toverflow: visible !important;\r\n}\r\n\r\n.n2-ss-slider:not(.n2-ss-loaded):not([data-ss-carousel]) .n2-ss-slide-backgrounds [data-public-id][data-lzl-first=\"1\"],\r\n.n2-ss-slider:not(.n2-ss-loaded):not([data-ss-carousel]) [data-slide-public-id][data-lzl-first=\"1\"] {\r\n\ttransform: translate3d(0px, 0px, 0px) !important;\r\n}\r\n\r\n.n2-ss-slider:not(.n2-ss-loaded):not([data-ss-carousel]) .n2-ss-slide:not([data-slide-public-id][data-lzl-first=\"1\"]),\r\n.n2-ss-slider:not(.n2-ss-loaded) .n2-ss-layer.js-lzl-n-ing,\r\n.n2-ss-slider:not(.n2-ss-loaded):not([style*=ss-responsive-scale]) [data-responsiveposition],\r\n.n2-ss-slider:not(.n2-ss-loaded):not([style*=ss-responsive-scale]) [data-responsivesize],\r\n.n2-ss-slider.n2-ss-loaded .n2-ss-layer.js-lzl-ing {\r\n\tvisibility: hidden !important;\r\n}\r\n\r\n.n2-ss-slider:not(.n2-ss-loaded):not([data-ss-carousel]) [data-slide-public-id][data-lzl-first=\"1\"] .n2-ss-layers-container,\r\n.n2-ss-slider:not(.n2-ss-loaded):not([data-ss-carousel]) .n2-ss-slide-backgrounds [data-public-id][data-lzl-first=\"1\"],\r\n.n2-ss-slider:not(.n2-ss-loaded) .n2-ss-slider-controls-advanced {\r\n\topacity: 1 !important;\r\n}\r\n\r\n.n2-ss-slider[data-ss-carousel]:not(.n2-ss-loaded) .n2-ss-layers-container {\r\n\topacity: 1 !important;\r\n\tvisibility: visible !important;\r\n}\r\n\r\n.n2-ss-slider-pane {\r\n\topacity: 1 !important;\r\n\tanimation-name: none !important;\r\n\t--self-side-margin: auto !important;\r\n\t--slide-width: 100% !important;\r\n}\r\n\r\n/*.n2-ss-showcase-slides:not(.n2-ss-showcase-slides--ready) {\r\n\topacity: 1 !important;\r\n\ttransform: none !important;\r\n}*/" ),
 
 					'wp-block-ultimate-post-slider'	=> array( 'enable' => true,		'descr' => 'Block Ultimate Post Slider',	'data' => "[class*=wp-block-ultimate-post-post-slider] .ultp-block-items-wrap:not(.slick-initialized) > .ultp-block-item:not(:first-child)\n{\n\tdisplay: none!important;\n}" ),
-
-					'preloaders'	=> array( 'enable' => true,		'descr' => 'Preloaders',				'data' => "#pre-load, #preloader, #page_preloader, #page-preloader, #loader-wrapper, #royal_preloader, #loftloader-wrapper, #page-loading, #the7-body > #load, #loader, #loaded, #loader-container,\r\n.rokka-loader, .page-preloader-cover, .apus-page-loading, .medizco-preloder, e-page-transition, .loadercontent, .shadepro-preloader-wrap, .tslg-screen, .page-preloader, .pre-loading, .preloader-outer, .page-loader, .martfury-preloader, body.theme-dotdigital > .preloader, .loader-wrap, .site-loader, .pix-page-loading-bg, .pix-loading-circ-path, .mesh-loader, .lqd-preloader-wrap {\r\n\tdisplay: none !important;\r\n}\r\n\r\nbody.royal_preloader {\r\n\tvisibility: hidden !important;\r\n}" ),
 
 					'elementor-vis'		=> array( 'enable' => false, 'descr' => 'Elementor (visibility and animation)', 'data' => "body.seraph-accel-js-lzl-ing-ani .elementor-invisible {\r\n\tvisibility: visible !important;\r\n}\r\n\r\n.elementor-element[data-settings*=\"animation\\\"\"] {\r\n\tanimation-name: none !important;\r\n}" ),
 
@@ -1895,7 +2367,7 @@ function OnOptGetDef_Sett()
 
 					'packery'		=> array( 'enable' => true,		'descr' => 'Packery',					'data' => "[data-packery-options].row.row-grid > .col:not([style*=\"position\"]),\r\n[data-packery-options].row.row-masonry > .col:not([style*=\"position\"]) {\r\n\tfloat: unset;\r\n\tdisplay: inline-block !important;\r\n\tvertical-align: top;\r\n}" ),
 
-					'htmlGen'		=> array( 'enable' => true,		'descr' => 'Generic HTML',					'data' => "html, body {\r\n\tdisplay: block !important;\r\n\topacity: 1 !important;\r\n\tvisibility: unset !important;\r\n}" ),
+					'theme-xstore'		=> array( 'enable' => true,		'descr' => 'XStore theme',		'data' => "body.wp-theme-xstore.elementor-default:not([data-elementor-device-mode]) {\r\n\t--etheme-element-loading-opacity: 1;\r\n\t--etheme-element-loading-visibility:visible;\r\n\t--etheme-element-loader-display:none;\r\n}" ),
 
 					'cookie-law-info'		=> array( 'enable' => true,		'descr' => 'CookieYes',					'data' => ".cky-consent-container.cky-hide ~ .cky-consent-container {\r\n\tdisplay: none;\r\n}" ),
 				),
@@ -1969,11 +2441,16 @@ function OnOptGetDef_Sett()
 						),
 
 						'sklCssSelExcl' => array(
-							'@#([\\w\\-\\%]+)@',
+							"r=pslg:@\\.(?:[\\-\\w]+[\\-\\_]|)((?'POST_SLUG'))[\\-\\_\\W]@i",
+							"@#([\\w\\-\\%]+)@",
 
-							'@\\.(?:product_cat|product_tag|video_tag|category|categories|tag|term|label-term|pa|label-attribute-pa|woocommerce-product-attributes-item-|comment-author)[\\-_]([\\w\\-]+)@i',
-							'@[^[:alnum:]]eb-(?:row|column|text|accordion(?:-item|))-([[:alnum:]]+)[^[:alnum:]\\-_]@i',
-							'@[\\.#][\\w\\-\\:\\@\\\\]*[\\-_]([\\da-f]+)[\\W_]@i',
+							"@\\.(?:[\\-\\w]+[\\-\\_]|)(?:category|categories|tag|term|comment-author|(?'ENUM_TAXONOMIES_NOTBUILTIN'))[\\-\\_]([\\w\\-]+)@i",
+							"r=txnm:@\\.(?:[\\-\\w]+[\\-\\_]|)(category|(?'ENUM_TAXONOMIES_NOTBUILTIN'))[\\-\\_\\W]@i",
+							"@\\.(?:[\\-\\w]+[\\-\\_]|)(?:post|page|attachment|(?'ENUM_POSTTYPES_NOTBUILTINVIEWABLESPEC'))[\\-\\_]([\\w\\-]+)@i",
+
+							"@[^[:alnum:]]eb-(?:row|column|text|accordion(?:-item|))-([[:alnum:]]+)[^[:alnum:]\\-_]@i",
+
+							"@[\\.#][\\w\\-\\:\\@\\\\]*[\\-_]([\\da-f]+)[\\W_]@i",
 
 						),
 					),
@@ -2097,6 +2574,7 @@ function OnOptGetDef_Sett()
 		'asyncUseCron' => true,
 		'asyncMode' => '',
 		'asyncUseCmptNbr' => false,
+		'asyncSmpOpt' => true,
 	) );
 }
 
@@ -2120,7 +2598,7 @@ function GetSiteId( $site = null )
 function GetBlogIdFromSiteId( $siteId )
 {
 	if( $siteId === 'm' )
-		return( defined( 'BLOG_ID_CURRENT_SITE' ) ? BLOG_ID_CURRENT_SITE : 0 );
+		return( Gen::Constant( 'BLOG_ID_CURRENT_SITE', 0 ) );
 
 	$nPos = strpos( $siteId, '_' );
 	if( $nPos === false )
@@ -2174,24 +2652,42 @@ function GetCacheCurUserSession( $siteId, $defForce = false )
 		return( $seraph_accel_g_sessInfo );
 
 	$secure = is_ssl();
-	$cookie = Gen::SanitizeTextData( (isset($_COOKIE[ ( $secure ? '__Secure-' : '' ) . 'wp_seraph_accel_sess_' . $siteId ])?$_COOKIE[ ( $secure ? '__Secure-' : '' ) . 'wp_seraph_accel_sess_' . $siteId ]:null) );
+
+	$cookieName = ( $secure ? '__Secure-' : '' ) . 'wp_seraph_accel_sess_' . $siteId;
+	$cookie = Gen::SanitizeTextData( ($_COOKIE[ $cookieName ]??null) );
 	if( empty( $cookie ) && $secure )
-		$cookie = Gen::SanitizeTextData( (isset($_COOKIE[ 'wp_seraph_accel_sess_' . $siteId ])?$_COOKIE[ 'wp_seraph_accel_sess_' . $siteId ]:null) );
+	{
+		$cookieName = 'wp_seraph_accel_sess_' . $siteId;
+		$cookie = Gen::SanitizeTextData( ($_COOKIE[ $cookieName ]??null) );
+	}
+
 	if( empty( $cookie ) )
+	{
+
 		return( $seraph_accel_g_sessInfo = $sessInfoDef );
+	}
 
 	$cookie_elements = explode( '|', $cookie );
 	if( count( $cookie_elements ) !== 5 )
+	{
+
 		return( $seraph_accel_g_sessInfo = $sessInfoDef );
+	}
 
 	list( $userSessionId, $sessionId, $userId, $expiration, $hmac ) = $cookie_elements;
 
 	if( $expiration && time() > $expiration )
+	{
+
 		return( $seraph_accel_g_sessInfo = $sessInfoDef );
+	}
 
 	$hmacCheck = _GetCacheCurUserSessionHash( $sessionId, $userSessionId, $userId, $expiration );
 	if( $hmac !== $hmacCheck )
+	{
+
 		return( $seraph_accel_g_sessInfo = $sessInfoDef );
+	}
 
 	return( $seraph_accel_g_sessInfo = array( 'sessId' => $sessionId, 'userSessId' => $userSessionId, 'userId' => $userId, 'expiration' => $expiration ) );
 }
@@ -2320,7 +2816,7 @@ function CacheCvs( $sz, $szOrig )
 function IsSrvNotSupportGzAssets()
 {
 
-	return( preg_match( '@litespeed@i', (isset($_SERVER[ 'SERVER_SOFTWARE' ])?$_SERVER[ 'SERVER_SOFTWARE' ]:'') ) );
+	return( preg_match( '@litespeed@i', ($_SERVER[ 'SERVER_SOFTWARE' ]??'') ) );
 }
 
 function CacheCgf( $settCache, $dataPath, $oiCi, $fileExt, $dataFileExt = '' )
@@ -2348,7 +2844,7 @@ function CacheCgif( $settCache, $oiCi )
 	return( $oiCif );
 }
 
-function CacheCw( $settCache, $siteRootPath, $dataPath, $composite, $content, $type, $fileExt = null )
+function CacheCw( $settCache, $siteRootDataPath, $dataPath, $composite, $content, $type, $fileExt = null )
 {
 	if( !$fileExt )
 		$fileExt = $type;
@@ -2387,7 +2883,7 @@ function CacheCw( $settCache, $siteRootPath, $dataPath, $composite, $content, $t
 
 		$oiCf = $dataPath . '/' . $oiCif . '.' . $fileExt . $dataFileExt;
 
-		$lock = new Lock( $oiCf . '.l', false, true );
+		$lock = new Lock( 'dtl', dirname( $dataPath ) );
 		if( !$lock -> Acquire() )
 		{
 			$writeOk = false;
@@ -2464,8 +2960,8 @@ function CacheCw( $settCache, $siteRootPath, $dataPath, $composite, $content, $t
 	if( !$writeOk )
 		return( null );
 
-	if( $siteRootPath !== null && strpos( $dataPath, $siteRootPath . '/' ) === 0 )
-		$relFilePath = substr( $dataPath, strlen( $siteRootPath ) + 1 ) . '/';
+	if( $siteRootDataPath !== null )
+		$relFilePath = substr( $dataPath, strlen( $siteRootDataPath ) + 1 ) . '/';
 	else
 		$relFilePath = '';
 	$relFilePath .= $oiCif . '.' . $fileExt;
@@ -2473,7 +2969,7 @@ function CacheCw( $settCache, $siteRootPath, $dataPath, $composite, $content, $t
 	return( array( 'id' => $oiCi, 'relFilePath' => $relFilePath ) );
 }
 
-function CacheCc( $settCache, $siteRootPath, $dataPath, $oiCi, $type, $fileExt = null )
+function CacheCc( $settCache, $siteRootDataPath, $dataPath, $oiCi, $type, $fileExt = null )
 {
 	if( !$fileExt )
 		$fileExt = $type;
@@ -2485,7 +2981,7 @@ function CacheCc( $settCache, $siteRootPath, $dataPath, $oiCi, $type, $fileExt =
 
 	$oiCf = $dataPath . '/' . $oiCif . '.' . $fileExt;
 
-	$lock = new Lock( $oiCf . '.l', false, true );
+	$lock = new Lock( 'dtl', dirname( $dataPath ) );
 	if( !$lock -> Acquire() )
 	{
 		Gen::LastErrDsc_Set( $lock -> GetErrDescr() );
@@ -2499,8 +2995,8 @@ function CacheCc( $settCache, $siteRootPath, $dataPath, $oiCi, $type, $fileExt =
 	if( !$readOk )
 		return( null );
 
-	if( $siteRootPath !== null && strpos( $dataPath, $siteRootPath . '/' ) === 0 )
-		$relFilePath = substr( $dataPath, strlen( $siteRootPath ) + 1 ) . '/';
+	if( $siteRootDataPath !== null )
+		$relFilePath = substr( $dataPath, strlen( $siteRootDataPath ) + 1 ) . '/';
 	else
 		$relFilePath = '';
 	$relFilePath .= $oiCif . '.' . $fileExt;
@@ -2559,6 +3055,8 @@ function ReadSce( $dataPath, $settCache, $id, $type )
 
 function CacheReadDsc( $filePath )
 {
+	if( !@file_exists( $filePath ) )
+		return( false );
 	return( @unserialize( @file_get_contents( $filePath ) ) );
 }
 
@@ -2566,12 +3064,17 @@ function CacheDscUpdate( $lock, $settCache, $content, $deps, $subParts, $dataPat
 {
 	global $seraph_accel_g_dscFile;
 	global $seraph_accel_g_dscFilePending;
+	global $seraph_accel_g_simpCacheMode;
+
+	$contentType = 'html';
+	if( is_string( $seraph_accel_g_simpCacheMode ) && Gen::StrStartsWith( ( string )$seraph_accel_g_simpCacheMode, 'data:' ) )
+		$contentType = substr( $seraph_accel_g_simpCacheMode, 5 );
 
 	$dsc = array( 'p' => array() );
 
 	$writeOk = true;
 
-		$writeOk = !!_ContentCw( $dsc, $content, 'html', $settCache, $dataPath );
+		$writeOk = !!_ContentCw( $dsc, $content, $contentType, $settCache, $dataPath );
 
 	$dsc[ 'c' ] = pack( 'V', crc32( $content ) );
 	$dsc[ 'a' ] = hash( 'adler32', $content, true );
@@ -2591,7 +3094,7 @@ function CacheDscUpdate( $lock, $settCache, $content, $deps, $subParts, $dataPat
 
 		{
 			if( !$tmp && $dscOld && isset( $dscOld[ 't' ] ) )
-				$hdrs = (isset($dscOld[ 'hd' ])?$dscOld[ 'hd' ]:null);
+				$hdrs = ($dscOld[ 'hd' ]??null);
 			else
 				$hdrs = GetCurHdrsToStoreInCache( $settCache );
 
@@ -2609,7 +3112,7 @@ function CacheDscUpdate( $lock, $settCache, $content, $deps, $subParts, $dataPat
 
 		if( $writeOk )
 		{
-			$preservedFileTime = @filemtime( $seraph_accel_g_dscFile );
+			$preservedFileTime = Gen::FileMTime( $seraph_accel_g_dscFile );
 			if( $preservedFileTime === false )
 			{
 				if( $tmp )
@@ -2668,6 +3171,22 @@ function CacheDoesCronDelayPageLoad()
 	return( true );
 }
 
+function CacheFem()
+{
+
+	@error_reporting( E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR );
+	@ini_set( 'display_errors', 'Off' );
+
+	set_error_handler(
+		function( $errno, $errstr, $errfile, $errline, $errcontext = null )
+		{
+			if( $errno & ( E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR ) )
+				return( false );
+			return( true );
+		}
+	);
+}
+
 function CacheDoCronAndEndRequest()
 {
 	global $seraph_accel_g_prepPrms;
@@ -2678,13 +3197,16 @@ function CacheDoCronAndEndRequest()
 	if( !Gen::CloseCurRequestSessionForContinueBgWork() )
 		return( false );
 
+	CacheFem();
+
 	add_action( 'wp_loaded', function() { if( Wp::GetFilters( 'init', 'wp_cron' ) ) wp_cron(); exit(); }, -999999 );
 	return( true );
 }
 
 function GetContentProcessorForce( $sett )
 {
-	if( !(isset($sett[ 'debug' ])?$sett[ 'debug' ]:null) )
+
+	if( !($sett[ 'debug' ]??null) )
 		return( null );
 
 	if( isset( $_REQUEST[ 'seraph_accel_proc' ] ) )
@@ -2770,7 +3292,7 @@ function Tof_GetFileData( $dir, $id, $ver = null, $compressed = false, $oiCi = n
 
 	if( $ver )
 	{
-		$vFrom = (isset($data[ 'v' ])?$data[ 'v' ]:null);
+		$vFrom = ($data[ 'v' ]??null);
 		if( is_array( $ver ) )
 		{
 			if( $ver[ 0 ] !== $vFrom )
@@ -2836,7 +3358,7 @@ function GetCacheSiteIdAdjustPath( $sites, &$addr, &$siteSubId, &$path )
 	$addrSite = $addr;
 	for( ;; )
 	{
-		$id = (isset($sites[ $addrSite ])?$sites[ $addrSite ]:null);
+		$id = ($sites[ $addrSite ]??null);
 		if( $id )
 		{
 			$path = ltrim( substr( $addr, strlen( $addrSite ) ), '/' );
@@ -2851,6 +3373,8 @@ function GetCacheSiteIdAdjustPath( $sites, &$addr, &$siteSubId, &$path )
 			$addr = $addrSite;
 			return( $id );
 		}
+		else if( $id === false )
+			break;
 
 		$addrSiteNext = dirname( $addrSite );
 		if( $addrSiteNext === $addrSite )
@@ -2909,13 +3433,13 @@ function CachePathNormalize( $path, &$pathIsDir, $bLwr = true )
 function ParseContCachePathArgs( $serverArgs, &$args )
 {
 
-	$path = (isset($serverArgs[ 'REQUEST_URI' ])?$serverArgs[ 'REQUEST_URI' ]:null);
+	$path = ($serverArgs[ 'REQUEST_URI' ]??null);
 	$posQuery = strpos( $path, '?' );
 
 	if( $posQuery !== false )
 	{
 		$queryOrig = substr( $path, $posQuery + 1 );
-		if( $args === null || $queryOrig != (isset($serverArgs[ 'QUERY_STRING' ])?$serverArgs[ 'QUERY_STRING' ]:null) )
+		if( $args === null || $queryOrig != ($serverArgs[ 'QUERY_STRING' ]??null) )
 		{
 			$args = array();
 			@parse_str( $queryOrig, $args );
@@ -2940,12 +3464,8 @@ function GetContCacheEarlySkipData( &$pathOrig = null , &$path = null , &$pathIs
 
 	if( defined( 'SID' ) && SID != '' )
 		$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'sid' ) );
-	else if( is_admin() )
-		$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'admin' ) );
 	else if( defined( 'DOING_CRON' ) || isset( $_REQUEST[ 'doing_wp_cron' ] ) )
 		$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'cron' ) );
-	else if( defined( 'XMLRPC_REQUEST' ) )
-		$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'xmlrpc' ) );
 	else if( isset( $_REQUEST[ 'seraph_accel_at' ] ) )
 		$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'seraph_accel_at:' . Gen::SanitizeId( $_REQUEST[ 'seraph_accel_at' ] ) ) );
 	else
@@ -2953,7 +3473,11 @@ function GetContCacheEarlySkipData( &$pathOrig = null , &$path = null , &$pathIs
 		$pathOrig = ParseContCachePathArgs( $_SERVER, $args );
 		$path = CachePathNormalize( $pathOrig, $pathIsDir );
 
-		if( strpos( $path, 'robots.txt' ) !== false )
+		if( is_admin() )
+			$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'admin' ) );
+		else if( defined( 'XMLRPC_REQUEST' ) )
+			$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'xmlrpc' ) );
+		else if( strpos( $path, 'robots.txt' ) !== false )
 			$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'robots' ) );
 		else if( strpos( $path, '.htaccess' ) !== false )
 			$seraph_accel_g_cacheSkipData = array( 'skipped', array( 'reason' => 'htaccess' ) );
@@ -2999,6 +3523,8 @@ function IsUriByPartsExcluded( $settCache, $path, &$query )
 
 function CheckPathInUriList( $a, $path, $pathOrig = null )
 {
+	if( !is_string( $path ) )
+		$path = '';
 	if( $pathOrig === null )
 		$pathOrig = $path;
 
@@ -3063,7 +3589,7 @@ function _ContProcGetExclStatus( $settCache, $ctxGrps, $userAgent, $cookies, $pa
 
 					foreach( $ctxGrps as $ctxGrp )
 					{
-						if( !(isset($ctxGrp[ 'enable' ])?$ctxGrp[ 'enable' ]:null) )
+						if( !($ctxGrp[ 'enable' ]??null) )
 							continue;
 
 						$ctxArgs = Gen::GetArrField( $ctxGrp, array( 'args' ), array() );
@@ -3112,7 +3638,7 @@ function _ContProcGetExclStatus( $settCache, $ctxGrps, $userAgent, $cookies, $pa
 
 					foreach( $ctxGrps as $ctxGrp )
 					{
-						if( !(isset($ctxGrp[ 'enable' ])?$ctxGrp[ 'enable' ]:null) )
+						if( !($ctxGrp[ 'enable' ]??null) )
 							continue;
 
 						$ctxArgs = Gen::GetArrField( $ctxGrp, array( 'args' ), array() );
@@ -3188,7 +3714,7 @@ function ContProcGetExclStatus( $siteId, $settCache, $path, $pathOrig, $pathIsDi
 
 	$varsOut = array();
 
-	$userAgent = strtolower( (isset($_SERVER[ 'HTTP_USER_AGENT' ])?$_SERVER[ 'HTTP_USER_AGENT' ]:'') );
+	$userAgent = strtolower( ($_SERVER[ 'HTTP_USER_AGENT' ]??'') );
 
 	$varsOut[ 'tmCur' ] = $tmCur;
 	$varsOut[ 'userAgent' ] = $userAgent;
@@ -3200,11 +3726,14 @@ function ContProcGetExclStatus( $siteId, $settCache, $path, $pathOrig, $pathIsDi
 		$path .= '/';
 	$seraph_accel_g_contProcGetExclStatus = _ContProcGetExclStatus( $settCache, $ctxGrps, $userAgent, $_COOKIE, $path, $pathOrig, $args, $adjustArgs, $varsOut[ 'aArgRemove' ] );
 	if( $seraph_accel_g_contProcGetExclStatus )
+	{
+
 		return( $seraph_accel_g_contProcGetExclStatus );
+	}
 
 	$sessInfo = GetCacheCurUserSession( $siteId, $seraph_accel_g_cacheCtxSkip );
 
-	$userId = (isset($sessInfo[ 'userId' ])?$sessInfo[ 'userId' ]:null);
+	$userId = ($sessInfo[ 'userId' ]??null);
 
 	$varsOut[ 'sessInfo' ] = $sessInfo;
 	$varsOut[ 'userId' ] = $userId;
@@ -3230,9 +3759,9 @@ function ContProcGetExclStatus( $siteId, $settCache, $path, $pathOrig, $pathIsDi
 		foreach( array_keys( $_COOKIE ) as $cookKey )
 		{
 			$viewStateIdProbe = '';
-			if( (isset($settCache[ 'views' ])?$settCache[ 'views' ]:null) )
+			if( ($settCache[ 'views' ]??null) )
 				foreach( $viewsGrps as $viewsGrp )
-					if( (isset($viewsGrp[ 'enable' ])?$viewsGrp[ 'enable' ]:null) )
+					if( ($viewsGrp[ 'enable' ]??null) )
 						AccomulateCookiesState( $viewStateIdProbe, array( $cookKey => $_COOKIE[ $cookKey ] ), Gen::GetArrField( $viewsGrp, array( 'cookies' ), array() ) );
 
 			if( !strlen( $viewStateIdProbe ) )
@@ -3243,15 +3772,18 @@ function ContProcGetExclStatus( $siteId, $settCache, $path, $pathOrig, $pathIsDi
 	$varsOut[ 'stateCookId' ] = $stateCookId;
 
 	$shouldCurUserSessionExist = ShouldCurUserSessionExist();
-	if( ( !(isset($sessInfo[ 'sessId' ])?$sessInfo[ 'sessId' ]:null) && ( $shouldCurUserSessionExist || $stateCookId ) ) || ( $shouldCurUserSessionExist && !$userId ) )
+	if( ( !($sessInfo[ 'sessId' ]??null) && ( $shouldCurUserSessionExist || $stateCookId ) ) || ( $shouldCurUserSessionExist && !$userId ) )
+	{
+
 		$seraph_accel_g_contProcGetExclStatus = Gen::GetArrField( $settCache, array( 'ctx' ), false ) ? 'noCacheSession' : 'userCtx';
+	}
 
 	return( $seraph_accel_g_contProcGetExclStatus );
 }
 
 function IsStrRegExp( $s )
 {
-	return( strpos( '/~@;%`#', (isset($s[ 0 ])?$s[ 0 ]:null) ) !== false );
+	return( strpos( '/~@;%`#', ($s[ 0 ]??null) ) !== false );
 }
 
 function ExprConditionsSet_Parse( $expr )
@@ -3288,15 +3820,15 @@ function ExprConditionsSet_ItemOp( $e, $v )
 	{
 	case 'ne':		return( $v !== $e[ 'v' ] );
 	case 'e':		return( $v === $e[ 'v' ] );
-	case 'v':		return( !strlen( $v ) );
+	case 'v':		return( is_string( $v ) ? !strlen( $v ) : !$v );
 
 	case '<':
 	case '>':
 	case '>=':
-	case '<=':		return( strlen( $v ) ? @version_compare( $v, $e[ 'v' ], $e[ 'op' ] ) : false );
+	case '<=':		return( ( is_string( $v ) && strlen( $v ) ) ? @version_compare( $v, $e[ 'v' ], $e[ 'op' ] ) : false );
 	}
 
-	return( !!strlen( $v ) );
+	return( is_string( $v ) ? !!strlen( $v ) : !!$v );
 }
 
 function ExprConditionsSet_IsItemOpFullSearch( $e )
@@ -3326,6 +3858,26 @@ function ExprConditionsSet_IsRegExp( $ee )
 		if( IsStrRegExp( $e[ 'expr' ] ) )
 			return( true );
 	return( false );
+}
+
+function ExprConditionsSet_MatchEx( $aExpr, $cbMatch )
+{
+	$found = false;
+	foreach( $aExpr as $e )
+	{
+		$val = call_user_func( $cbMatch, $e[ 'expr' ] );
+		if( !ExprConditionsSet_ItemOp( $e, $val ) )
+			return( false );
+
+		$found = true;
+	}
+
+	return( $found );
+}
+
+function ExprConditionsSet_Match( $expr, $cbMatch )
+{
+	return( ExprConditionsSet_MatchEx( ExprConditionsSet_Parse( $expr ), $cbMatch ) );
 }
 
 function AccomulateCookiesState( &$state, $cookies, $elems )
@@ -3417,7 +3969,7 @@ function GetCookiesState( $ctxGrps, $cookies )
 	$stateCookId = '';
 
 	foreach( $ctxGrps as $ctxGrp )
-		if( (isset($ctxGrp[ 'enable' ])?$ctxGrp[ 'enable' ]:null) )
+		if( ($ctxGrp[ 'enable' ]??null) )
 			AccomulateCookiesState( $stateCookId, $cookies, Gen::GetArrField( $ctxGrp, array( 'cookies' ), array() ) );
 
 	return( $stateCookId );
@@ -3427,14 +3979,15 @@ function ContProcGetSkipStatus( $content )
 {
 	global $seraph_accel_g_contProcGetSkipStatus;
 	global $seraph_accel_g_sRedirLocation;
+	global $seraph_accel_g_simpCacheMode;
 
 	if( $seraph_accel_g_contProcGetSkipStatus !== null )
 		return( $seraph_accel_g_contProcGetSkipStatus );
 
-	if( defined( 'REST_REQUEST' ) && REST_REQUEST )
+	if( $seraph_accel_g_simpCacheMode === null && defined( 'REST_REQUEST' ) && REST_REQUEST )
 		return( $seraph_accel_g_contProcGetSkipStatus = 'restapi' );
 
-	if( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST )
+	if( $seraph_accel_g_simpCacheMode === null && defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST )
 		return( $seraph_accel_g_contProcGetSkipStatus = 'xmlrpc' );
 
 	$errLast = error_get_last();
@@ -3458,13 +4011,16 @@ function ContProcGetSkipStatus( $content )
 	if( is_404() )
 		return( $seraph_accel_g_contProcGetSkipStatus = 'httpCode:404' );
 
-	if( is_search() )
+	if( $seraph_accel_g_simpCacheMode === null && is_search() )
 		return( $seraph_accel_g_contProcGetSkipStatus = 'search' );
-	if( is_feed() )
+	if( $seraph_accel_g_simpCacheMode === null && is_feed() )
 		return( $seraph_accel_g_contProcGetSkipStatus = 'feed' );
 
-	if( Gen::StrPosArr( $content, array( '</body>', '</BODY>' ) ) === false && Gen::StrPosArr( $content, array( '</head>', '</HEAD>' ) ) === false )
+	if( $seraph_accel_g_simpCacheMode === null && Gen::StrPosArr( $content, array( '</body>', '</BODY>' ) ) === false && Gen::StrPosArr( $content, array( '</head>', '</HEAD>' ) ) === false )
+	{
+
 		return( $seraph_accel_g_contProcGetSkipStatus = 'noHdrOrBody' );
+	}
 
 	return( $seraph_accel_g_contProcGetSkipStatus = false );
 }
@@ -3530,19 +4086,19 @@ function ContProcIsCompatView( $settCache, $userAgent  )
 
 function GetViewTypeUserAgent( $viewsDeviceGrp )
 {
-	return( 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.26 ' . ucwords( implode( ' ', Gen::GetArrField( $viewsDeviceGrp, array( 'agents' ), array() ) ) ) );
+	return( 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.45 ' . ucwords( implode( ' ', Gen::GetArrField( $viewsDeviceGrp, array( 'agents' ), array() ) ) ) );
 }
 
 function CorrectRequestScheme( &$serverArgs, $target = null )
 {
 
-	if( strtolower( (isset($serverArgs[ 'HTTPS' ])?$serverArgs[ 'HTTPS' ]:'') ) == 'on' || ( $target == 'client' && strtolower( (isset($serverArgs[ 'HTTP_X_FORWARDED_PROTO' ])?$serverArgs[ 'HTTP_X_FORWARDED_PROTO' ]:'') ) == 'https' ) )
+	if( strtolower( ($serverArgs[ 'HTTPS' ]??'') ) == 'on' || ( $target == 'client' && strtolower( ($serverArgs[ 'HTTP_X_FORWARDED_PROTO' ]??'') ) == 'https' ) )
 	{
-		if( (isset($serverArgs[ 'REQUEST_SCHEME' ])?$serverArgs[ 'REQUEST_SCHEME' ]:null) == 'http' && (isset($serverArgs[ 'SERVER_PORT' ])?$serverArgs[ 'SERVER_PORT' ]:null) == 80 )
+		if( ($serverArgs[ 'REQUEST_SCHEME' ]??null) == 'http' && ($serverArgs[ 'SERVER_PORT' ]??null) == 80 )
 			$serverArgs[ 'SERVER_PORT' ] = 443;
 		$serverArgs[ 'REQUEST_SCHEME' ] = 'https';
 	}
-	else if( !(isset($serverArgs[ 'REQUEST_SCHEME' ])?$serverArgs[ 'REQUEST_SCHEME' ]:null) )
+	else if( !($serverArgs[ 'REQUEST_SCHEME' ]??null) )
 		$serverArgs[ 'REQUEST_SCHEME' ] = 'http';
 }
 
@@ -3557,16 +4113,23 @@ function GetCurRequestUrl()
 	return( $serverArgsTmp[ 'REQUEST_SCHEME' ] . '://' . GetRequestHost( $serverArgsTmp ) . $serverArgsTmp[ 'REQUEST_URI' ] );
 }
 
+function AddCurPostArgs( &$args )
+{
+	foreach( $_POST as $argId => $argV )
+		if( is_scalar( $argV ) )
+			$args[ $argId ] = substr( ( string )$argV, 0, 100 );
+}
+
 function Queue_GetStgPrms( $dirQueue, $state )
 {
 	return( array( 'dirFilesPattern' => $dirQueue . '/' . $state . '/*.dat.gz', 'options' => array( 'countPerFirstChunk' => 100, 'cbSort' =>
 		function( $item1, $item2 )
 		{
-			$iCmp = Gen::VarCmp( (isset($item1[ 'p' ])?$item1[ 'p' ]:null), (isset($item2[ 'p' ])?$item2[ 'p' ]:null) );
+			$iCmp = Gen::VarCmp( ($item1[ 'p' ]??null), ($item2[ 'p' ]??null) );
 			if( $iCmp !== 0 )
 				return( $iCmp );
 
-			$iCmp = Gen::VarCmp( (isset($item1[ 't' ])?$item1[ 't' ]:null), (isset($item2[ 't' ])?$item2[ 't' ]:null) );
+			$iCmp = Gen::VarCmp( ($item1[ 't' ]??null), ($item2[ 't' ]??null) );
 			if( $iCmp !== 0 )
 				return( $iCmp );
 
@@ -3607,7 +4170,9 @@ function OnAsyncTask_QueueProcessItems( $args )
 	$settGlobal = Plugin::SettGetGlobal();
 	$settCacheGlobal = Gen::GetArrField( $settGlobal, array( 'cache' ), array() );
 
-	$nMaxItems = (isset($settCacheGlobal[ 'maxProc' ])?$settCacheGlobal[ 'maxProc' ]:null);
+	$asyncMode = null;
+
+	$nMaxItems = ($settCacheGlobal[ 'maxProc' ]??null);
 	if( !$nMaxItems )
 		$nMaxItems = 1;
 	$nMaxItemsTotal = $nMaxItems;
@@ -3624,7 +4189,7 @@ function OnAsyncTask_QueueProcessItems( $args )
 		@unlink( $fileTempQueue );
 
 		if( $data )
-			CachePostPreparePageEx( Gen::GetArrField( $data, array( 'u' ), '' ), Gen::GetArrField( $data, array( 's' ), '' ), Gen::GetArrField( $data, array( 'p' ), 10 ), null, Gen::GetArrField( $data, array( 'h' ), array() ), Gen::GetArrField( $data, array( 't' ), 0.0 ) );
+			CachePostPreparePageEx( null, Gen::GetArrField( $data, array( 'u' ), '' ), Gen::GetArrField( $data, array( 's' ), '' ), Gen::GetArrField( $data, array( 'p' ), 10 ), null, Gen::GetArrField( $data, array( 'h' ), array() ), Gen::GetArrField( $data, array( 't' ), 0.0 ) );
 	}
 
 	$aCurItemsPrior = array();
@@ -3640,20 +4205,26 @@ function OnAsyncTask_QueueProcessItems( $args )
 		$aDone = new ArrayOnFiles( Queue_GetStgPrms( $dirQueue, 2 ) );
 		foreach( $aProgress -> slice( 0 ) as $id => $item )
 		{
-			$data = Gen::GetArrField( Gen::Unserialize( (isset($item[ 'd' ])?$item[ 'd' ]:null) ), array( '' ), array() );
+			$data = Gen::GetArrField( Gen::Unserialize( ($item[ 'd' ]??null) ), array( '' ), array() );
 
 			$hrItemForce = Gen::S_OK;
-			$tmDur = $tmCur - ( float )(isset($item[ 't' ])?$item[ 't' ]:null);
-			$fileCtl = ProcessCtlData_GetFullPath( (isset($data[ 'pc' ])?$data[ 'pc' ]:null) );
+			$tmDur = $tmCur - ( float )($item[ 't' ]??null);
+			$fileCtl = ProcessCtlData_GetFullPath( ($data[ 'pc' ]??null) );
 			if( $tmDur <= $procTmLim + 30 )
 			{
 				if( $tmDur > ( 30 ) && $fileCtl )
 				{
 					$ctlRes = ProcessCtlData_Get( $fileCtl, $isLive );
+
 					if( $ctlRes === null )
 						$hrItemForce = Gen::S_ABORTED;
-					else if( Gen::GetArrField( $ctlRes, array( 'stage' ) ) && !Gen::GetArrField( $ctlRes, array( 'finish' ) ) && !$isLive )
-						$hrItemForce = Gen::E_INVALID_STATE;
+					else if( Gen::GetArrField( $ctlRes, array( 'stage' ), '' ) )
+					{
+						if( !Gen::GetArrField( $ctlRes, array( 'finish' ) ) && !$isLive )
+							$hrItemForce = Gen::E_INVALID_STATE;
+					}
+					else if( ( int )($item[ 'tp' ]??0) == 0 && $asyncMode != 'ec' && ($settGlobal[ 'asyncSmpOpt' ]??null) )
+						_CacheProcessItem_RunSmpOpt( $asyncMode );
 				}
 			}
 			else
@@ -3663,7 +4234,7 @@ function OnAsyncTask_QueueProcessItems( $args )
 			{
 				if( $nMaxItems > 0 )
 					$nMaxItems --;
-				$aCurItemsPrior[ ( int )(isset($item[ 'p' ])?$item[ 'p' ]:null) ] = true;
+				$aCurItemsPrior[ ( int )($item[ 'p' ]??null) ] = true;
 				continue;
 			}
 
@@ -3695,7 +4266,7 @@ function OnAsyncTask_QueueProcessItems( $args )
 					{
 						$item = $aDone -> current();
 
-						$data = Gen::GetArrField( Gen::Unserialize( (isset($item[ 'd' ])?$item[ 'd' ]:null) ), array( '' ), array() );
+						$data = Gen::GetArrField( Gen::Unserialize( ($item[ 'd' ]??null) ), array( '' ), array() );
 						list( $iconClr, $state, $stateDsc, $duration ) = GetQueueItem_Done_Attrs( $data );
 						unset( $state, $stateDsc, $duration );
 
@@ -3745,7 +4316,7 @@ function OnAsyncTask_QueueProcessItems( $args )
 		return;
 	}
 
-	$procInterval = (isset($settCacheGlobal[ 'procInterval' ])?$settCacheGlobal[ 'procInterval' ]:null);
+	$procInterval = ($settCacheGlobal[ 'procInterval' ]??null);
 	if( $procInterval )
 	{
 		if( $nMaxItems < $nMaxItemsTotal )
@@ -3789,18 +4360,16 @@ function OnAsyncTask_QueueProcessItems( $args )
 	uasort( $items, Gen::GetArrField( Queue_GetStgPrms( '', 0 ), array( 'options', 'cbSort' ) ) );
 	$items = array_slice( $items, 0, $nMaxItems, true );
 
-	$asyncMode = null;
-
 	foreach( $items as $id => $item )
 	{
-		$prior = ( int )(isset($item[ 'p' ])?$item[ 'p' ]:null);
+		$prior = ( int )($item[ 'p' ]??null);
 
 		if( isset( $aCurItemsPrior[ -480 ] ) && $prior > -480 )
 		    continue;
 
 		$aCurItemsPrior[ $prior ] = true;
 
-		Plugin::AsyncTaskPostEx( 'CacheProcessItem', ( int )(isset($item[ 'tp' ])?$item[ 'tp' ]:0) == 0 && $asyncMode == 'ec', array( 'id' => $id, 'siteId' => $item[ 's' ] ) );
+		Plugin::AsyncTaskPostEx( 'CacheProcessItem', ( int )($item[ 'tp' ]??0) == 0 && ( $asyncMode == 'ec' || ($settGlobal[ 'asyncSmpOpt' ]??null) ), array( 'id' => $id, 'siteId' => $item[ 's' ] ) );
 
 	}
 
@@ -3830,7 +4399,7 @@ function CachePushQueueProcessor( $next = false, $immediately = false, $shortInt
 	if( $next && $immediately === false )
 	{
 		$settCacheGlobal = Gen::GetArrField( Plugin::SettGetGlobal(), array( 'cache' ), array() );
-		$procInterval = $shortInterval ? (isset($settCacheGlobal[ 'procIntervalShort' ])?$settCacheGlobal[ 'procIntervalShort' ]:null) : (isset($settCacheGlobal[ 'procInterval' ])?$settCacheGlobal[ 'procInterval' ]:null);
+		$procInterval = $shortInterval ? ($settCacheGlobal[ 'procIntervalShort' ]??null) : ($settCacheGlobal[ 'procInterval' ]??null);
 	}
 
 	$dirFileValues = PluginFileValues::GetDirVar( '' );
@@ -3862,18 +4431,23 @@ function CachePushQueueProcessor( $next = false, $immediately = false, $shortInt
 
 }
 
-function ContentProcess_IsAborted( $settCache = null )
+function ContentProcess_IsAborted( $ctxProcess = null, $settCache = null )
 {
 	global $seraph_accel_g_prepPrms;
 
 	if( $seraph_accel_g_prepPrms === null )
 		return;
 
-	return( !Gen::SliceExecTime( (isset($settCache[ 'procWorkInt' ])?$settCache[ 'procWorkInt' ]:null), (isset($settCache[ 'procPauseInt' ])?$settCache[ 'procPauseInt' ]:null), 2,
+	if( ($ctxProcess[ 'mode' ]??0) & 4 )
+		$procPauseInt = ($settCache[ 'procPauseInt' ]??null);
+	else
+		$procPauseInt = 0;
+
+	return( !Gen::SliceExecTime( ($settCache[ 'procWorkInt' ]??null), $procPauseInt, 2,
 		function()
 		{
 			global $seraph_accel_g_prepPrms;
-			return( ProcessCtlData_IsAborted( (isset($seraph_accel_g_prepPrms[ 'pc' ])?$seraph_accel_g_prepPrms[ 'pc' ]:null) ) );
+			return( ProcessCtlData_IsAborted( ($seraph_accel_g_prepPrms[ 'pc' ]??null) ) );
 		}
 	) );
 }
@@ -4016,7 +4590,10 @@ class ProcessQueueItemCtx
 	public $repeatIdx = null;
 	public $skipStatus = null;
 	public $warns = null;
+	public $infos = array();
 	public $requestRes = null;
+	public $method = null;
+	public $url = null;
 	public $hdrs = null;
 	public $hr = Gen::S_OK;
 	public $httpCode = 200;
@@ -4039,10 +4616,10 @@ class ProcessQueueItemCtx
 		return( Net::UrlAddArgs( $url, array( 'seraph_accel_prep' => @base64_encode( @json_encode( array_merge( $prepArgs, array( 'nonce' => hash_hmac( 'md5', '' . $tmStamp, GetSalt() ), '_tm' => '' . $tmStamp ) ) ) ) ) ) );
 	}
 
-	static function MakeRequest( $asyncMode, $url, $hdrs, $timeout = 0 )
+	static function MakeRequest( $asyncMode, $method, $url, $hdrs = array(), $timeout = 0 )
 	{
 
-		$prms = array( 'local' => $asyncMode == 'loc', 'redirection' => 0, 'timeout' => $timeout, 'sslverify' => false, 'headers' => $hdrs );
+		$prms = array( 'redirection' => 0, 'timeout' => $timeout, 'sslverify' => false, 'headers' => $hdrs );
 
 		if( !$timeout )
 		{
@@ -4056,18 +4633,26 @@ class ProcessQueueItemCtx
 			}
 		}
 
-		return( Wp::RemoteGet( $url, $prms ) );
+		if( $asyncMode == 'loc' )
+		{
+			$prms[ 'local' ] = true;
+			$prms[ 'headers' ] = array_merge( OnAsyncTasksSetNeededHdrs( $_SERVER, array() ), ( array )$hdrs );
+		}
+
+		return( Wp::RemoteRequest( $method, $url, $prms ) );
 	}
 
 	function PrepareRequest()
 	{
-		$prepArgs = array( 'pc' => $this -> data[ 'pc' ], 'p' => ( int )(isset($this -> data[ 'p' ])?$this -> data[ 'p' ]:null) );
-		if( ( int )(isset($this -> item[ 'p' ])?$this -> item[ 'p' ]:null) == -480 )
-			$prepArgs[ 'lrn' ] = (isset($this -> data[ 'l' ])?$this -> data[ 'l' ]:null);
+		$prepArgs = array( 'pc' => $this -> data[ 'pc' ], 'p' => ( int )($this -> data[ 'p' ]??null) );
+		if( ( int )($this -> item[ 'p' ]??null) == -480 )
+			$prepArgs[ 'lrn' ] = ($this -> data[ 'l' ]??null);
 
-		$this -> url = ProcessQueueItemCtx::AdjustRequestUrl( (isset($this -> data[ 'u' ])?$this -> data[ 'u' ]:null), $this -> item[ 't' ], $prepArgs );
+		$this -> method = ( string )($this -> data[ 'm' ]??'GET');
 
-		$this -> hdrs = (isset($this -> data[ 'h' ])?$this -> data[ 'h' ]:null);
+		$this -> url = ProcessQueueItemCtx::AdjustRequestUrl( ($this -> data[ 'u' ]??null), $this -> item[ 't' ], $prepArgs );
+
+		$this -> hdrs = ($this -> data[ 'h' ]??null);
 		if( !is_array( $this -> hdrs ) )
 			$this -> hdrs = array();
 
@@ -4090,6 +4675,12 @@ class ProcessQueueItemCtx
 	function WaitForEndRequest()
 	{
 		$this -> tmFinish = microtime( true );
+
+		{
+			$sett = Plugin::SettGet();
+			if( ($sett[ 'debugInfo' ]??null) )
+				$this -> infos[ LocId::Pack( 'HdrsForRequest' ) ] = PackKvArrInfo( $this -> hdrsForRequest );
+		}
 
 		$ctlRes = ProcessCtlData_Get( $this -> fileCtl, $isLive );
 		if( Gen::GetArrField( $ctlRes, array( 'stage' ) ) )
@@ -4125,6 +4716,7 @@ class ProcessQueueItemCtx
 					$this -> skipStatus = Gen::GetArrField( $ctlRes, array( 'skip' ) );
 					$this -> hr = $this -> skipStatus ? ( Gen::StrStartsWith( $this -> skipStatus, 'err:' ) ? Gen::E_FAIL : Gen::S_FALSE ) : Gen::S_OK;
 					$this -> warns = Gen::GetArrField( $ctlRes, array( 'warns' ), array() );
+					Gen::ArrSplice( $this -> infos, count( $this -> infos ), 0, Gen::GetArrField( $ctlRes, array( 'infos' ), array() ) );
 					break;
 				}
 
@@ -4150,17 +4742,17 @@ class ProcessQueueItemCtx
 			else if( $this -> httpCode && $this -> httpCode != 500 )
 			{
 				if( $this -> httpCode == 524 || $this -> httpCode == 522 || $this -> httpCode == 504 || $this -> httpCode == 503 )
-					if( ( $this -> repeatIdx = (isset($this -> data[ 'rdr' ])?$this -> data[ 'rdr' ]:0) ) <= 3 )
+					if( ( $this -> repeatIdx = ($this -> data[ 'rdr' ]??0) ) <= 3 )
 						$this -> needRepeatPage = true;
 				$this -> hr = Gen::HrSuccFromFail( $this -> hr );
 			}
 		}
 
-		$this -> urlRedir = $this -> requestRes ? trim( wp_remote_retrieve_header( $this -> requestRes, 'location' ) ) : null;
+		$this -> urlRedir = $this -> requestRes ? trim( Net::GetHeaderFromWpRemoteRequestRes( $this -> requestRes, 'location' ) ) : null;
 		if( !$this -> urlRedir && $this -> skipStatus && preg_match( '@^httpCode\\:(?:301|302|307|308)\\:@', $this -> skipStatus ) )
 			$this -> urlRedir = rawurldecode( substr( $this -> skipStatus, 13 ) );
 
-		if( $this -> urlRedir && $this -> urlRedir != (isset($this -> data[ 'u' ])?$this -> data[ 'u' ]:null) )
+		if( $this -> urlRedir && $this -> urlRedir != ($this -> data[ 'u' ]??null) )
 		{
 			$this -> urlRedir = remove_query_arg( array( 'seraph_accel_prep' ), $this -> urlRedir );
 			if( Gen::StrStartsWith( $this -> urlRedir, '//' ) )
@@ -4172,9 +4764,9 @@ class ProcessQueueItemCtx
 			else if( strpos( $this -> urlRedir, '://' ) === false )
 				$this -> urlRedir = Net::GetSiteAddrFromUrl( $this -> url, true ) . $this -> urlRedir;
 
-			if( ( int )(isset($this -> item[ 'p' ])?$this -> item[ 'p' ]:null) !== 10 )
-				if( ( $redirIdx = (isset($this -> data[ 'rdr' ])?$this -> data[ 'rdr' ]:0) ) <= 4 )
-					if( CachePostPreparePageEx( $this -> urlRedir, $this -> siteId, ( int )(isset($this -> item[ 'p' ])?$this -> item[ 'p' ]:null), (isset($this -> data[ 'p' ])?$this -> data[ 'p' ]:null), $this -> hdrs, $this -> data[ 'to' ], $redirIdx + 1, (isset($this -> data[ 'l' ])?$this -> data[ 'l' ]:null) ) )
+			if( ( int )($this -> item[ 'p' ]??null) !== 10 )
+				if( ( $redirIdx = ($this -> data[ 'rdr' ]??0) ) <= 4 )
+					if( CachePostPreparePageEx( ($this -> data[ 'm' ]??null), $this -> urlRedir, $this -> siteId, ( int )($this -> item[ 'p' ]??null), ($this -> data[ 'p' ]??null), $this -> hdrs, $this -> data[ 'to' ], $redirIdx + 1, ($this -> data[ 'l' ]??null) ) )
 						$this -> immediatelyPushQueue = true;
 		}
 	}
@@ -4208,7 +4800,7 @@ class ProcessQueueItemCtx
 				$this -> data[ 'r' ] = $this -> skipStatus;
 		}
 
-		$priorOrig = ( int )(isset($this -> item[ 'p' ])?$this -> item[ 'p' ]:null);
+		$priorOrig = ( int )($this -> item[ 'p' ]??null);
 
 		if( $this -> needLrn )
 		{
@@ -4228,15 +4820,17 @@ class ProcessQueueItemCtx
 				unset( $aProgress, $lock );
 			}
 
-			CachePostPreparePageEx( (isset($this -> data[ 'u' ])?$this -> data[ 'u' ]:null), $this -> siteId, -480, (isset($this -> data[ 'p' ])?$this -> data[ 'p' ]:null), $this -> hdrs, $this -> data[ 'to' ], null, $this -> needLrn );
+			CachePostPreparePageEx( ($this -> data[ 'm' ]??null), ($this -> data[ 'u' ]??null), $this -> siteId, -480, ($this -> data[ 'p' ]??null), $this -> hdrs, $this -> data[ 'to' ], null, $this -> needLrn );
 			$this -> immediatelyPushQueue = true;
 		}
 		else
 		{
 			if( $this -> hr == Gen::S_OK && $this -> warns )
 				$this -> data[ 'w' ] = $this -> warns;
+			if( $this -> infos )
+				$this -> data[ 'i' ] = $this -> infos;
 
-			if( isset( $this -> data[ 'hr' ] ) && $this -> data[ 'hr' ] != Gen::S_OK && $this -> urlRedir && $this -> urlRedir == (isset($this -> data[ 'u' ])?$this -> data[ 'u' ]:null) )
+			if( isset( $this -> data[ 'hr' ] ) && $this -> data[ 'hr' ] != Gen::S_OK && $this -> urlRedir && $this -> urlRedir == ($this -> data[ 'u' ]??null) )
 			{
 				$this -> data[ 'hr' ] = ( $this -> hr = Gen::E_FAIL );
 				$this -> data[ 'r' ] = 'redirectToItself';
@@ -4256,8 +4850,8 @@ class ProcessQueueItemCtx
 					$dataExtUpdated = $aProgress[ $this -> id ];
 					if( $dataExtUpdated )
 					{
-						if( $dataExtUpdated = Gen::GetArrField( Gen::Unserialize( (isset($dataExtUpdated[ 'd' ])?$dataExtUpdated[ 'd' ]:null) ), array( '' ), array() ) )
-							if( (isset($dataExtUpdated[ 'rpt' ])?$dataExtUpdated[ 'rpt' ]:null) )
+						if( $dataExtUpdated = Gen::GetArrField( Gen::Unserialize( ($dataExtUpdated[ 'd' ]??null) ), array( '' ), array() ) )
+							if( ($dataExtUpdated[ 'rpt' ]??null) )
 								$this -> needRepeatPage = true;
 
 						unset( $dataExtUpdated );
@@ -4280,7 +4874,7 @@ class ProcessQueueItemCtx
 
 		PluginFileValues::SetEx( PluginFileValues::GetDirVar( '' ), 'pelt', ( int )$this -> tmFinish );
 
-		if( $this -> needRepeatPage && CachePostPreparePageEx( (isset($this -> data[ 'u' ])?$this -> data[ 'u' ]:null), $this -> siteId, $priorOrig, (isset($this -> data[ 'p' ])?$this -> data[ 'p' ]:null), $this -> hdrs, $this -> data[ 'to' ], $this -> repeatIdx !== null ? ( $this -> repeatIdx + 1 ) : null, (isset($this -> data[ 'l' ])?$this -> data[ 'l' ]:null) ) )
+		if( $this -> needRepeatPage && CachePostPreparePageEx( ($this -> data[ 'm' ]??null), ($this -> data[ 'u' ]??null), $this -> siteId, $priorOrig, ($this -> data[ 'p' ]??null), $this -> hdrs, $this -> data[ 'to' ], $this -> repeatIdx !== null ? ( $this -> repeatIdx + 1 ) : null, ($this -> data[ 'l' ]??null) ) )
 			$this -> immediatelyPushQueue = true;
 
 		CachePushQueueProcessor( true, $this -> immediatelyPushQueue, $this -> hr != Gen::S_OK && Gen::HrSucc( $this -> hr ) );
@@ -4289,10 +4883,24 @@ class ProcessQueueItemCtx
 
 }
 
+function PackKvArrInfo( $a )
+{
+	if( !$a )
+		return( null );
+	return( Gen::ArrMap( $a, function( $k, $v ) { return( LocId::Pack( 'NameToDetails_%1$s%2$s', null, array( ( string )$k, is_string( $v ) ? $v : json_encode( $v ) ) ) ); } ) );
+}
+
+function _CacheProcessItem_RunSmpOpt( $asyncMode )
+{
+
+	$tmStamp = microtime( true );
+	return( ProcessQueueItemCtx::MakeRequest( $asyncMode, 'GET', Net::UrlAddArgs( Plugin::AsyncTaskPushGetUrlEx( Wp::GetSiteWpRootUrl( OnAsyncTasksGetPushUrlFile( true ) ), 'O', $tmStamp ), array( 'nonce' => hash_hmac( 'md5', Plugin::AsyncTaskPushGetTimerun( $tmStamp ), GetSalt() ) ) ), array(  ) ) );
+}
+
 function OnAsyncTask_CacheProcessItem( $args )
 {
 
-	$ctx = new ProcessQueueItemCtx( (isset($args[ 'id' ])?$args[ 'id' ]:null), Gen::SanitizeId( (isset($args[ 'siteId' ])?$args[ 'siteId' ]:null) ) );
+	$ctx = new ProcessQueueItemCtx( ($args[ 'id' ]??null), Gen::SanitizeId( ($args[ 'siteId' ]??null) ) );
 	if( !$ctx -> id || !$ctx -> siteId )
 		return;
 
@@ -4312,11 +4920,11 @@ function OnAsyncTask_CacheProcessItem( $args )
 	if( !$ctx -> item )
 		return;
 
-	$ctx -> data = Gen::GetArrField( Gen::Unserialize( (isset($ctx -> item[ 'd' ])?$ctx -> item[ 'd' ]:null) ), array( '' ), array() );
+	$ctx -> data = Gen::GetArrField( Gen::Unserialize( ($ctx -> item[ 'd' ]??null) ), array( '' ), array() );
 	if( !$ctx -> data )
 		return;
 
-	{ if( !isset( $ctx -> data[ 'p' ] ) ) $ctx -> data[ 'p' ] = ( int )(isset($ctx -> item[ 'p' ])?$ctx -> item[ 'p' ]:null); }
+	{ if( !isset( $ctx -> data[ 'p' ] ) ) $ctx -> data[ 'p' ] = ( int )($ctx -> item[ 'p' ]??null); }
 
 	$ctx -> procTmLim = Gen::GetArrField( Plugin::SettGet(), array( 'cache', 'procTmLim' ), 570 );
 	Gen::SetTimeLimit( $ctx -> procTmLim + 30 );
@@ -4349,7 +4957,7 @@ function OnAsyncTask_CacheProcessItem( $args )
 	unset( $fileCtlDir );
 
 	$ctx -> data[ 'pc' ] = Gen::GetFileName( $ctx -> fileCtl );
-	$ctx -> data[ 'to' ] = ( float )(isset($ctx -> item[ 't' ])?$ctx -> item[ 't' ]:null);
+	$ctx -> data[ 'to' ] = ( float )($ctx -> item[ 't' ]??null);
 	$ctx -> item[ 't' ] = microtime( true );
 	$ctx -> item[ 'd' ] = Gen::Serialize( $ctx -> data );
 
@@ -4383,16 +4991,17 @@ function OnAsyncTask_CacheProcessItem( $args )
 		unset( $aInitial, $aProgress, $lock );
 	}
 
-	$itemType = ( int )(isset($ctx -> item[ 'tp' ])?$ctx -> item[ 'tp' ]:0);
+	$itemType = ( int )($ctx -> item[ 'tp' ]??0);
 	if( $itemType == 0 )
 	{
+		$settGlobal = Plugin::SettGetGlobal();
 
 		$asyncMode = null;
 
 		$ctx -> PrepareRequest();
 
 		{
-			$ctx -> requestRes = ProcessQueueItemCtx::MakeRequest( $asyncMode, $ctx -> url, $ctx -> hdrsForRequest, 30 );
+			$ctx -> requestRes = ProcessQueueItemCtx::MakeRequest( $asyncMode, $ctx -> method, $ctx -> url, $ctx -> hdrsForRequest, 30 );
 
 			$ctx -> hr = Net::GetHrFromWpRemoteGet( $ctx -> requestRes, true );
 			$ctx -> httpCode = Net::GetResponseCodeFromHr( $ctx -> hr );
@@ -4405,24 +5014,24 @@ function OnAsyncTask_CacheProcessItem( $args )
 	{
 		global $seraph_accel_g_prepPrms;
 
-		$seraph_accel_g_prepPrms = array( 'pc' => $ctx -> fileCtl, 'p' => ( int )(isset($ctx -> item[ 'p' ])?$ctx -> item[ 'p' ]:null) );
+		$seraph_accel_g_prepPrms = array( 'pc' => $ctx -> fileCtl, 'p' => ( int )($ctx -> item[ 'p' ]??null) );
 		$sett = Plugin::SettGet();
 
 		$ctxProcess = &GetContentProcessCtx( $_SERVER, $sett );
 
 		if( $itemType == 10 )
 		{
-			ProcessCtlData_Update( (isset($seraph_accel_g_prepPrms[ 'pc' ])?$seraph_accel_g_prepPrms[ 'pc' ]:null), array( 'stage' => 'images' ) );
+			ProcessCtlData_Update( ($seraph_accel_g_prepPrms[ 'pc' ]??null), array( 'stage' => 'images' ) );
 
-			$file = (isset($ctx -> data[ 'u' ])?$ctx -> data[ 'u' ]:null);
+			$file = ($ctx -> data[ 'u' ]??null);
 			Images_ProcessSrc_ConvertAll( $ctxProcess, Gen::GetArrField( $sett, array( 'contPr', 'img' ), array() ), null, $file, Images_ProcessSrcEx_FileMTime( $file ), false );
 		}
 		else if( $itemType == 20 )
 		{
-			ProcessCtlData_Update( (isset($seraph_accel_g_prepPrms[ 'pc' ])?$seraph_accel_g_prepPrms[ 'pc' ]:null), array( 'stage' => 'images' ) );
+			ProcessCtlData_Update( ($seraph_accel_g_prepPrms[ 'pc' ]??null), array( 'stage' => 'images' ) );
 
-			$file = (isset($ctx -> data[ 'u' ])?$ctx -> data[ 'u' ]:null);
-			Images_ProcessSrc_SizeAlternatives( $ctxProcess, $file, $sett, (isset($ctx -> data[ 'ai' ])?$ctx -> data[ 'ai' ]:null) );
+			$file = ($ctx -> data[ 'u' ]??null);
+			Images_ProcessSrc_SizeAlternatives( $ctxProcess, $file, $sett, ($ctx -> data[ 'ai' ]??null) );
 		}
 
 		unset( $ctxProcess );
@@ -4492,12 +5101,12 @@ function CacheInitQueueTable( $force = false )
 
 					foreach( $items as $itemFromDb )
 					{
-						$id = @hex2bin( (isset($itemFromDb[ 'id' ])?$itemFromDb[ 'id' ]:null) );
-						$siteId = (isset($itemFromDb[ 'site_id' ])?$itemFromDb[ 'site_id' ]:null);
+						$id = @hex2bin( ($itemFromDb[ 'id' ]??null) );
+						$siteId = ($itemFromDb[ 'site_id' ]??null);
 						if( !$siteId )
 							$siteId = 'm';
 
-						$item = array( 'p' => ( int )(isset($itemFromDb[ 'prior' ])?$itemFromDb[ 'prior' ]:null), 't' => ( float )(isset($itemFromDb[ 'tm' ])?$itemFromDb[ 'tm' ]:null), 'd' => (isset($itemFromDb[ 'data' ])?$itemFromDb[ 'data' ]:null) );
+						$item = array( 'p' => ( int )($itemFromDb[ 'prior' ]??null), 't' => ( float )($itemFromDb[ 'tm' ]??null), 'd' => ($itemFromDb[ 'data' ]??null) );
 
 						{
 							$dirQueue = GetCacheDir() . '/q/' . $siteId;
@@ -4536,9 +5145,9 @@ function CacheInitQueueTable( $force = false )
 
 function GetViewDeviceGrpNameFromData( $viewsDeviceGrp )
 {
-	$viewName = (isset($viewsDeviceGrp[ 'name' ])?$viewsDeviceGrp[ 'name' ]:null);
+	$viewName = ($viewsDeviceGrp[ 'name' ]??null);
 	if( !$viewName )
-		$viewName = 'id:' . (isset($viewsDeviceGrp[ 'id' ])?$viewsDeviceGrp[ 'id' ]:null);
+		$viewName = 'id:' . ($viewsDeviceGrp[ 'id' ]??null);
 	return( $viewName );
 }
 
@@ -4548,9 +5157,9 @@ function _CachePostPreparePageEx_StopAndRepeat( $aProgress, $id, $data = null )
 	if( !$item )
 		return;
 
-	$itemInProgressData = Gen::GetArrField( Gen::Unserialize( (isset($item[ 'd' ])?$item[ 'd' ]:null) ), array( '' ), array() );
+	$itemInProgressData = Gen::GetArrField( Gen::Unserialize( ($item[ 'd' ]??null) ), array( '' ), array() );
 
-	if( (isset($itemInProgressData[ 'rpt' ])?$itemInProgressData[ 'rpt' ]:null) || !( $fileCtl = ProcessCtlData_GetFullPath( (isset($itemInProgressData[ 'pc' ])?$itemInProgressData[ 'pc' ]:null) ) ) )
+	if( ($itemInProgressData[ 'rpt' ]??null) || !( $fileCtl = ProcessCtlData_GetFullPath( ($itemInProgressData[ 'pc' ]??null) ) ) )
 		return;
 
 	ProcessCtlData_Del( $fileCtl );
@@ -4563,7 +5172,7 @@ function _CachePostPreparePageEx_StopAndRepeat( $aProgress, $id, $data = null )
 	$aProgress[ $id ] = $item;
 }
 
-function CachePostPreparePageEx( $url, $siteId, $priority, $priorityInitiator, $headers = null, $time = null, $redirIdx = null, $lrnId = null )
+function CachePostPreparePageEx( $method , $url, $siteId, $priority, $priorityInitiator, $headers = null, $time = null, $redirIdx = null, $lrnId = null )
 {
 
 	if( !$url )
@@ -4595,7 +5204,7 @@ function CachePostPreparePageEx( $url, $siteId, $priority, $priorityInitiator, $
 	$idLearn = md5( $idLearn, true );
 
 	$viewName = null;
-	if( $viewsDeviceGrp = GetCacheViewDeviceGrp( $settCache, strtolower( isset( $headers[ 'X-Seraph-Accel-Postpone-User-Agent' ] ) ? $headers[ 'X-Seraph-Accel-Postpone-User-Agent' ] : (isset($headers[ 'User-Agent' ])?$headers[ 'User-Agent' ]:'') ) ) )
+	if( $viewsDeviceGrp = GetCacheViewDeviceGrp( $settCache, strtolower( isset( $headers[ 'X-Seraph-Accel-Postpone-User-Agent' ] ) ? $headers[ 'X-Seraph-Accel-Postpone-User-Agent' ] : ($headers[ 'User-Agent' ]??'') ) ) )
 		$viewName = GetViewDeviceGrpNameFromData( $viewsDeviceGrp );
 
 	$dirQueue = GetCacheDir() . '/q/' . $siteId;
@@ -4625,6 +5234,8 @@ function CachePostPreparePageEx( $url, $siteId, $priority, $priorityInitiator, $
 	}
 
 	$data = array( 'p' => $priorityInitiator, 'u' => $url, 'h' => $headers, 'v' => $viewName );
+	if( $method && $method != 'GET' )
+		$data[ 'm' ] = $method;
 	if( $redirIdx )
 		$data[ 'rdr' ] = $redirIdx;
 	if( $lrnId )
@@ -4739,19 +5350,59 @@ function CacheQueueDelete( $siteId )
 	return( $res );
 }
 
-function GetExtContents( $url, &$contMimeType = null, $userAgentCmn = true, $timeout = 30, $rememberServerState = true )
+function GetExtContents( &$ctxProcess, $url, &$contMimeType = null, $userAgentCmn = true, $timeout = 30, $rememberServerState = true )
 {
+	$extCacheId = null;
+	if( $ctxProcess !== null )
+	{
+		$extCacheId = md5( $url );
+		$file = null;
+		$cont = null;
 
-	$args = array( 'sslverify' => false, 'timeout' => $timeout );
+		$lock = new Lock( Gen::GetFileDir( $ctxProcess[ 'dataPath' ] ) . '/eo/l', false );
+		if( $lock -> Acquire() )
+		{
+			foreach( glob( Gen::GetFileDir( $lock -> GetFileName() ) . '/' . $extCacheId . '.*', GLOB_NOSORT ) as $file )
+				break;
+
+			if( $file && ( $tmFile = @filemtime( $file ) ) !== false )
+			{
+				if( $tmFile > time() )
+					$cont = @file_get_contents( $file );
+				else
+					@unlink( $file );
+			}
+
+			$lock -> Release();
+		}
+
+		if( is_string( $cont ) && Gen::GetFileExt( $file ) == 'gz' && is_string( $cont = @gzdecode( $cont ) ) )
+			$file = Gen::GetFileName( $file, true, true );
+
+		if( is_string( $cont ) )
+		{
+			$contMimeType = Fs::GetMimeContentType( $file );
+			return( $cont );
+		}
+
+		unset( $file, $cont );
+	}
+
+	$args = array( 'sslverify' => false, 'timeout' => $timeout, 'headers' => array() );
 	if( $userAgentCmn )
-		$args[ 'user-agent' ] = 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.26';
+		$args[ 'headers' ][ 'User-Agent' ] = 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.45';
 
 	global $seraph_accel_g_aGetExtContentsFailedSrvs;
 
 	if( $serverId = Net::UrlParse( $url ) )
+	{
+		$args[ 'headers' ][ 'Host' ] = ($serverId[ 'host' ]??null);
 		$serverId = Net::UrlDeParse( $serverId, 0, array( PHP_URL_USER, PHP_URL_PASS, PHP_URL_PATH, PHP_URL_QUERY, PHP_URL_FRAGMENT ) );
+	}
 
-	if( $rememberServerState && $serverId && Gen::HrFail( (isset($seraph_accel_g_aGetExtContentsFailedSrvs[ $serverId ])?$seraph_accel_g_aGetExtContentsFailedSrvs[ $serverId ]:null) ) )
+	$args[ 'headers' ][ 'Accept' ] = '*/*';
+
+	if( $rememberServerState && $serverId && Gen::HrFail( ($seraph_accel_g_aGetExtContentsFailedSrvs[ $serverId ]??null) ) )
 		return( false );
 
 	$res = Wp::RemoteGet( $url, $args );
@@ -4764,13 +5415,54 @@ function GetExtContents( $url, &$contMimeType = null, $userAgentCmn = true, $tim
 		return( false );
 	}
 
-	$contMimeType = ( string )wp_remote_retrieve_header( $res, 'content-type' );
+	$contMimeType = ( string )Net::GetHeaderFromWpRemoteRequestRes( $res, 'content-type' );
+	$cont = wp_remote_retrieve_body( $res );
 
 	if( ( $nPos = strpos( $contMimeType, ';' ) ) !== false )
 		$contMimeType = substr( $contMimeType, 0, $nPos );
 	$contMimeType = trim( $contMimeType );
 
-	return( wp_remote_retrieve_body( $res ) );
+	if( $extCacheId !== null )
+	{
+
+		$contCacheTtl = Gen::ParseProps( ( string )Net::GetHeaderFromWpRemoteRequestRes( $res, 'cache-control' ), ',' );
+		if( isset( $contCacheTtl[ 'no-cache' ] ) || isset( $contCacheTtl[ 'no-store' ] ) )
+			$contCacheTtl = 5 * 60;
+		else if( isset( $contCacheTtl[ 's-maxage' ] ) )
+			$contCacheTtl = ( int )$contCacheTtl[ 's-maxage' ] - ( int )Net::GetHeaderFromWpRemoteRequestRes( $res, 'age' );
+		else if( isset( $contCacheTtl[ 'max-age' ] ) )
+			$contCacheTtl = ( int )$contCacheTtl[ 'max-age' ] - ( int )Net::GetHeaderFromWpRemoteRequestRes( $res, 'age' );
+		else
+		{
+			if( $contCacheTtl = ( string )Net::GetHeaderFromWpRemoteRequestRes( $res, 'expires' ) )
+			{
+				if( $sDate = ( string )Net::GetHeaderFromWpRemoteRequestRes( $res, 'date' ) )
+					$contCacheTtl = Net::GetTimeFromHdrVal( $contCacheTtl ) - Net::GetTimeFromHdrVal( $sDate );
+				else
+					$contCacheTtl = Net::GetTimeFromHdrVal( $contCacheTtl ) - time();
+			}
+			else
+				$contCacheTtl = 60 * 60 * 24;
+		}
+
+		if( $contCacheTtl > 0 && ( $fileType = Fs::GetFileTypeFromMimeContentType( $contMimeType ) ) )
+		{
+			$contCache = $cont;
+			if( in_array( $fileType, array( 'css', 'js', 'html', 'txt' ) ) && function_exists( 'gzencode' ) )
+			{
+				$contCache = @gzencode( $contCache, 9 );
+				if( $contCache === false )
+					$contCache = $cont;
+				else
+					$fileType .= '.gz';
+			}
+
+			_FileWriteTmpAndReplace( Gen::GetFileDir( $lock -> GetFileName() ) . '/' . $extCacheId . '.' . $fileType, time() + $contCacheTtl, $contCache, null, $lock );
+			unset( $contCache );
+		}
+	}
+
+	return( $cont );
 }
 
 function Images_ProcessSrcEx_FileMTime( $file )
@@ -4780,14 +5472,14 @@ function Images_ProcessSrcEx_FileMTime( $file )
 
 function CacheExtractPreparePageParams( &$args )
 {
-	$prms = (isset($args[ 'seraph_accel_prep' ])?$args[ 'seraph_accel_prep' ]:null);
+	$prms = ($args[ 'seraph_accel_prep' ]??null);
 	if( !$prms )
 		return( null );
 
 	Net::CurRequestRemoveArgs( $args, array( 'seraph_accel_prep' ) );
 
 	$prms = @json_decode( @base64_decode( Gen::SanitizeTextData( $prms ) ), true );
-	if( hash_hmac( 'md5', '' . (isset($prms[ '_tm' ])?$prms[ '_tm' ]:null), GetSalt() ) != (isset($prms[ 'nonce' ])?$prms[ 'nonce' ]:null) )
+	if( hash_hmac( 'md5', '' . ($prms[ '_tm' ]??null), GetSalt() ) != ($prms[ 'nonce' ]??null) )
 		return( false );
 
 	unset( $prms[ '_tm' ] );
@@ -4804,14 +5496,14 @@ function CacheExtractPreparePageParams( &$args )
 
 function GetCacheViewDeviceGrp( $settCache, $userAgent )
 {
-	if( !(isset($settCache[ 'views' ])?$settCache[ 'views' ]:null) )
+	if( !($settCache[ 'views' ]??null) )
 		return( null );
 
 	$viewsDeviceGrps = Gen::GetArrField( $settCache, array( 'viewsDeviceGrps' ), array() );
 
 	foreach( $viewsDeviceGrps as $viewsDeviceGrp )
 	{
-		if( !(isset($viewsDeviceGrp[ 'enable' ])?$viewsDeviceGrp[ 'enable' ]:null) )
+		if( !($viewsDeviceGrp[ 'enable' ]??null) )
 			continue;
 
 		$a = implode( ' ', Gen::GetArrField( $viewsDeviceGrp, array( 'agents' ), array() ) );
@@ -4821,7 +5513,7 @@ function GetCacheViewDeviceGrp( $settCache, $userAgent )
 
 	foreach( $viewsDeviceGrps as $viewsDeviceGrp )
 	{
-		if( !(isset($viewsDeviceGrp[ 'enable' ])?$viewsDeviceGrp[ 'enable' ]:null) )
+		if( !($viewsDeviceGrp[ 'enable' ]??null) )
 			continue;
 
 		if( MatchUserAgentExpressions( $userAgent, Gen::GetArrField( $viewsDeviceGrp, array( 'agents' ), array() ) ) )
@@ -4835,7 +5527,7 @@ function GetCurHdrsToStoreInCache( $settCache )
 {
 	$res = array();
 
-	$hdrPatterns = (isset($settCache[ 'hdrs' ])?$settCache[ 'hdrs' ]:null);
+	$hdrPatterns = ($settCache[ 'hdrs' ]??null);
 	if( !$hdrPatterns )
 		return( $res );
 
@@ -4867,6 +5559,11 @@ function VirtUriPath2Real( $path, array $aVPth )
 	return( $path );
 }
 
+function GetVirtUriPathsFromSett( $sett )
+{
+	return( Gen::GetArrField( unserialize( ( string )base64_decode( Gen::GetArrField( $sett, array( 'cache', '_vPth' ), '' ) ) ), array( '' ), array() ) );
+}
+
 function _FileWriteTmpAndReplace( $file, $fileTime = null, $data = null, $fileTmp = null, $lock = null )
 {
 
@@ -4876,12 +5573,14 @@ function _FileWriteTmpAndReplace( $file, $fileTime = null, $data = null, $fileTm
 	if( !$lock )
 		$lock = new Lock( $fileTmp . '.l', false, true );
 
-	if( $lock -> Acquire() )
+	if( ( $lr = $lock -> Acquire() ) !== false )
 	{
 		if( $data === null || @file_put_contents( $fileTmp, $data ) )
 		{
 			if( $fileTime === null || @touch( $fileTmp, $fileTime ) )
 			{
+				if( @file_exists( $file ) )
+					@unlink( $file );
 
 				if( @rename( $fileTmp, $file ) )
 				{
@@ -4897,7 +5596,8 @@ function _FileWriteTmpAndReplace( $file, $fileTime = null, $data = null, $fileTm
 		else
 			Gen::LastErrDsc_Set( LocId::Pack( 'FileWriteErr_%1$s', 'Common', array( $fileTmp ) ) );
 
-		$lock -> Release();
+		if( $lr )
+			$lock -> Release();
 	}
 	else
 		Gen::LastErrDsc_Set( $lock -> GetErrDescr() );
@@ -4916,7 +5616,7 @@ function _FileReadWithLocker( $file, $lock = null )
 	if( !$lock -> Acquire() )
 		return( false );
 
-	$data = @file_get_contents( $file );
+	$data = file_exists( $file ) ? @file_get_contents( $file ) : false;
 	$lock -> Release();
 	return( $data );
 }
@@ -5005,7 +5705,7 @@ function GetViewGeoId( $settCache, $serverArgs, &$ip, $geoIdForce = null )
 		{
 			foreach( $aGrp as $grpId => $grp )
 			{
-				if( !(isset($grp[ 'enable' ])?$grp[ 'enable' ]:null) || ( $geoIdForce !== '' && $geoIdForce !== $grpId ) )
+				if( !($grp[ 'enable' ]??null) || ( $geoIdForce !== '' && $geoIdForce !== $grpId ) )
 					continue;
 
 				$grpItem = Gen::ArrGetByPos( Gen::GetArrField( $grp, array( 'items' ), array() ), 0 );
@@ -5037,7 +5737,7 @@ function GetViewGeoId( $settCache, $serverArgs, &$ip, $geoIdForce = null )
 	$countryCodeForce = null;
 	foreach( $aGrp as $grpId => $grp )
 	{
-		if( !(isset($grp[ 'enable' ])?$grp[ 'enable' ]:null) )
+		if( !($grp[ 'enable' ]??null) )
 			continue;
 
 		$matched = false;
@@ -5121,6 +5821,194 @@ function DepsRemove( &$a, $aRem )
 	}
 }
 
+function CacheExt_Clear_CopyHdrs( &$aSrv )
+{
+	if( isset( $aSrv[ 'cw_allowed_ip' ] ) )
+		$aSrv[ 'HTTP_X_SERAPH_ACCEL_CW_ALLOWED_IP' ] = $aSrv[ 'cw_allowed_ip' ];
+	if( isset( $aSrv[ 'PRESSABLE_PROXIED_REQUEST' ] ) )
+		$aSrv[ 'HTTP_X_SERAPH_ACCEL_PRESSABLE_PROXIED_REQUEST' ] = $aSrv[ 'PRESSABLE_PROXIED_REQUEST' ];
+	if( isset( $aSrv[ 'WARPDRIVE_API' ] ) )
+		$aSrv[ 'HTTP_X_SERAPH_ACCEL_WARPDRIVE_API' ] = $aSrv[ 'WARPDRIVE_API' ];
+	if( isset( $aSrv[ 'H_PLATFORM' ] ) )
+		$aSrv[ 'HTTP_X_SERAPH_ACCEL_H_PLATFORM' ] = $aSrv[ 'H_PLATFORM' ];
+}
+
+function CacheExt_Clear_CopyHdrsArr()
+{
+	return( array( 'HTTP_X_LSCACHE', 'HTTP_X_ZXCS_VHOST', 'HTTP_X_SERAPH_ACCEL_CW_ALLOWED_IP', 'HTTP_X_SERAPH_ACCEL_PRESSABLE_PROXIED_REQUEST', 'HTTP_X_SERAPH_ACCEL_WARPDRIVE_API', 'HTTP_X_VARNISH', 'HTTP_X_SERAPH_ACCEL_H_PLATFORM' ) );
+}
+
+function CacheAdditional_WarmupUrl( $settCache, $url, $aHdrs, $cbIsAborted = null )
+{
+
+	$asyncMode = null;
+
+	if( $asyncMode == 'ec' )
+		return;
+
+	$srvUpdTimeout = Gen::GetArrField( $settCache, array( 'srvUpdTimeout' ), 5 );
+	foreach( $aHdrs as $hdrsId => $headers )
+	{
+		if( !isset( $headers[ 'User-Agent' ] ) )
+			$headers[ 'User-Agent' ] = ($headers[ 'X-Seraph-Accel-Postpone-User-Agent' ]??'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.45');
+		$headers[ 'User-Agent' ] = str_replace( 'seraph-accel-Agent/', 'seraph-accel-Agent-WarmUp/', $headers[ 'User-Agent' ] );
+
+		if( isset( $headers[ 'X-Seraph-Accel-Geo-Remote-Addr' ] ) )
+			$headers[ 'X-Real-Ip' ] = $headers[ 'X-Forwarded-For' ] = $headers[ 'X-Seraph-Accel-Geo-Remote-Addr' ];
+
+		$bProcess = true;
+		$tmStart = microtime( true );
+		for( ;; )
+		{
+			$requestRes = Wp::RemoteGet( $url, array( 'timeout' => $srvUpdTimeout, 'headers' => $headers, 'sslverify' => false,  ) );
+			if( Net::GetHrFromWpRemoteGet( $requestRes ) !== Gen::S_OK )
+			{
+				$bProcess = false;
+				break;
+			}
+
+			$cacheStatusCf = Net::GetHeaderFromWpRemoteRequestRes( $requestRes, 'cf-cache-status' );
+
+			if( $cacheStatusCf != 'MISS' && $cacheStatusCf != 'EXPIRED' )
+				break;
+
+			if( ( microtime( true ) - $tmStart > $srvUpdTimeout ) || ( $cbIsAborted && call_user_func( $cbIsAborted ) ) )
+			{
+				$bProcess = false;
+				break;
+			}
+
+			sleep( 1 );
+		}
+
+		if( !$bProcess )
+			break;
+	}
+}
+
+function CacheAdditional_UpdateCurUrl( $settCache, $srvUpd = false )
+{
+	global $seraph_accel_g_simpCacheMode;
+
+	if( $seraph_accel_g_simpCacheMode !== null )
+
+		return;
+
+	$url = null;
+
+	if( IsBatCacheRtm() )
+	{
+		if( $url === null )
+		    $url = GetCurRequestUrl();
+		BatCache_Clear( $url );
+	}
+
+	if( Gen::GetArrField( $settCache, array( 'srvClr' ), false ) && function_exists( 'seraph_accel\\CacheExt_Clear' ) )
+	{
+		if( $url === null )
+			$url = GetCurRequestUrl();
+		CacheExt_Clear( $url );
+	}
+
+	if( $srvUpd && Gen::GetArrField( $settCache, array( 'srvUpd' ), false ) )
+	{
+		if( $url === null )
+			$url = GetCurRequestUrl();
+
+		global $seraph_accel_g_ctxCache;
+
+		$aHdrs = array( $seraph_accel_g_ctxCache !== null ? $seraph_accel_g_ctxCache -> viewId : 'cur' => Net::GetRequestHeaders() );
+		CacheAdditional_WarmupUrl( $settCache, $url, $aHdrs );
+	}
+}
+
+function IsBatCacheRtm()
+{
+	global $batcache;
+	return( $batcache && is_object( $batcache ) );
+}
+
+function BatCache_Clear( $url = null )
+{
+	global $batcache;
+
+	if( !$batcache )
+		return( false );
+
+	wp_cache_init();
+	$batcache -> configure_groups();
+
+	if( !isset( $batcache -> group ) )
+		return( false );
+
+	if( $url === null )
+	{
+		if( function_exists( 'wp_cache_flush_group' ) )
+		{
+			wp_cache_flush_group( $batcache -> group );
+			if( isset( $batcache -> flush_group ) )
+				wp_cache_flush_group( $batcache -> flush_group );
+		}
+		else
+			wp_cache_flush();
+
+		return( true );
+	}
+
+	$urlComps = Net::UrlParse( $url, Net::URLPARSE_F_QUERY );
+	if( !$urlComps && !isset( $urlComps[ 'host' ] ) )
+		return( false );
+
+	if( isset( $batcache -> ignored_query_args ) )
+		foreach( $batcache -> ignored_query_args as $arg )
+			unset( $urlComps[ 'query' ][ $arg ] );
+	ksort( $urlComps[ 'query' ] );
+
+	$keysOld = $batcache -> keys;
+	$batcache -> keys = array(
+		'host' => Net::GetRequestHost( array( 'SERVER_NAME' => ($urlComps[ 'host' ]??''), 'SERVER_PORT' => ($urlComps[ 'port' ]??null) ) ),
+		'method' => 'GET',
+		'path' => ($urlComps[ 'path' ]??''),
+		'query' => ($urlComps[ 'query' ]??array()),
+		'extra' => array(),
+	);
+
+	$batcache -> add_flush_keys();
+
+	$keys = $batcache -> keys;
+	$batcache -> keys = $keysOld;
+
+	if( isset( $batcache -> origin ) )
+		$keys[ 'origin' ] = $batcache -> origin;
+
+	if( ($urlComps[ 'scheme' ]??'') == 'https' )
+		$keys[ 'ssl' ] = true;
+
+	foreach( array( 'mobile', 'tablet', 'desktop' ) as $deviceType )
+	{
+		$keys[ 'extra' ] = array( $deviceType );
+		wp_cache_delete( md5( serialize( $keys ) ), $batcache -> group );
+	}
+
+	return( true );
+}
+
+function BatCache_DontProcessCurRequest( $bForce = false )
+{
+
+	global $batcache;
+
+	if( !$batcache )
+		return( false );
+
+	if( function_exists( 'batcache_cancel' ) )
+		\batcache_cancel();
+
+	if( $bForce )
+		wp_cache_delete( $batcache -> url_key . '_genlock', $batcache -> group );
+
+}
+
 function LogGetRelativeFile()
 {
 	static $g_fileRel;
@@ -5133,6 +6021,8 @@ function LogGetRelativeFile()
 
 function LogWrite( $text, $severity = Ui::MsgInfo, $category = 'DEBUG' )
 {
-	Gen::LogWrite( GetCacheDir() . LogGetRelativeFile(), $text, $severity, $category );
+	$file = GetCacheDir() . LogGetRelativeFile();
+
+	Gen::LogWrite( $file, $text, $severity, $category );
 }
 

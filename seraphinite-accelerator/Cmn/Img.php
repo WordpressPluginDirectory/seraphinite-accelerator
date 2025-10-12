@@ -32,7 +32,8 @@ class Img
 
 	static function GetInfoFromFile( $file, $ext = false )
 	{
-		$data = @file_get_contents( $file );
+
+		$data = Gen::FileGetContents( $file );
 		return( $data !== false ? Img::GetInfoFromData( $data, $ext ) : null );
 	}
 
@@ -172,7 +173,7 @@ class Img
 
 		case 'image/jpeg':
 
-			if( !(isset($infoEx[ 'APP0' ])?$infoEx[ 'APP0' ]:null) )
+			if( !($infoEx[ 'APP0' ]??null) )
 				$infoEx[ 'APP0' ] = substr( $data, 6, 20 - 6 );
 
 			$data = @bin2hex( substr( $infoEx[ 'APP0' ], 8, 4 ) );
@@ -299,6 +300,7 @@ class Img
 			return( Gen::E_UNSUPPORTED );
 
 		$res = Gen::CallFunc( $fn, $args );
+
 		if( !$fileIsTmp )
 		{
 			if( $res )
@@ -327,7 +329,7 @@ class Img
 			$hr = self::_GetDataEx_PostProcess( $mimeType, $prms, $file );
 			if( $hr == Gen::S_OK )
 			{
-				$res = @file_get_contents( $file );
+				$res = Gen::FileGetContents( $file );
 				if( $res === false )
 				{
 					Gen::LastErrDsc_Set( Gen::GetLocPackFileReadErr( $file ) );
@@ -373,8 +375,8 @@ class Img
 						$hProc = @proc_open( $cmdline, array( 2 => array( 'pipe', 'w' ) ), $pipes, null, null, array( 'bypass_shell' => true ) );
 						if( $hProc )
 						{
-							$output = @stream_get_contents( (isset($pipes[ 2 ])?$pipes[ 2 ]:null) );
-							@fclose( (isset($pipes[ 2 ])?$pipes[ 2 ]:null) );
+							$output = @stream_get_contents( ($pipes[ 2 ]??null) );
+							@fclose( ($pipes[ 2 ]??null) );
 							$rescode = @proc_close( $hProc );
 
 							if( $rescode == 0 )
@@ -426,7 +428,21 @@ class Img
 		return( Gen::S_OK );
 	}
 
-	static function CreateCopyResample( $h, $sizeDst, $rcSrc = null, $rcDst = null, $bgClr = null )
+	static function CreateCopyScale( $h, $cx, $cy, $mode = IMG_BILINEAR_FIXED )
+	{
+		if( !$h || !$cx || !$cy )
+			return( null );
+
+		$hNew = @imagescale( $h, $cx, $cy, $mode );
+		if( $hNew === false && $mode != IMG_BILINEAR_FIXED )
+			$hNew = @imagescale( $h, $cx, $cy, IMG_BILINEAR_FIXED );
+		if( $hNew === false )
+			return( null );
+
+		return( $hNew );
+	}
+
+	static function CreateCopyResample( $h, $sizeDst, $rcSrc = null, $rcDst = null, $bgClr = null, $mode = IMG_BILINEAR_FIXED )
 	{
 		if( !$sizeDst[ 'cx' ] || !$sizeDst[ 'cy' ] )
 			return( null );
@@ -438,6 +454,8 @@ class Img
 		if( !$rcDst )
 			$rcDst = array( 'x' => 0, 'y' => 0, 'cx' => $sizeDst[ 'cx' ], 'cy' => $sizeDst[ 'cy' ] );
 
+		if( function_exists( 'imagesetinterpolation' ) )
+			@imagesetinterpolation( $hNew, $mode );
 		@imagesavealpha( $hNew, true );
 
 		$hClr = @imagecolorallocatealpha( $hNew, 0, 0, 0, 127 );
@@ -711,8 +729,8 @@ class Img
 		$hProc = @proc_open( $cmdline, array( 2 => array( 'pipe', 'w' ) ), $pipes, null, null, array( 'bypass_shell' => true ) );
 		if( $hProc )
 		{
-			$output = @stream_get_contents( (isset($pipes[ 2 ])?$pipes[ 2 ]:null) );
-			@fclose( (isset($pipes[ 2 ])?$pipes[ 2 ]:null) );
+			$output = @stream_get_contents( ($pipes[ 2 ]??null) );
+			@fclose( ($pipes[ 2 ]??null) );
 			$rescode = @proc_close( $hProc );
 
 			if( $rescode != 0 )
@@ -722,7 +740,7 @@ class Img
 			}
 			else if( $fileIsTmp )
 			{
-				$res = @file_get_contents( $file );
+				$res = Gen::FileGetContents( $file );
 				if( $res === false )
 				{
 					Gen::LastErrDsc_Set( Gen::GetLocPackFileReadErr( $file ) );
@@ -828,8 +846,8 @@ class Img
 		$hProc = @proc_open( $cmdline, array( 2 => array( 'pipe', 'w' ) ), $pipes, null, null, array( 'bypass_shell' => true ) );
 		if( $hProc )
 		{
-			$output = @stream_get_contents( (isset($pipes[ 2 ])?$pipes[ 2 ]:null) );
-			@fclose( (isset($pipes[ 2 ])?$pipes[ 2 ]:null) );
+			$output = @stream_get_contents( ($pipes[ 2 ]??null) );
+			@fclose( ($pipes[ 2 ]??null) );
 			$rescode = @proc_close( $hProc );
 
 			if( $rescode != 0 )
@@ -839,7 +857,7 @@ class Img
 			}
 			else if( $fileIsTmp )
 			{
-				$res = @file_get_contents( $file );
+				$res = Gen::FileGetContents( $file );
 				if( $res === false )
 				{
 					Gen::LastErrDsc_Set( Gen::GetLocPackFileReadErr( $file ) );

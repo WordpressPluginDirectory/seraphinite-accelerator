@@ -12,7 +12,10 @@ function GetCodeViewHtmlBlock( $cont )
 
 function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 {
+	global $seraph_accel_g_phpCfgFileChangedInCurrentSession;
+
 	$sett = Plugin::SettGet();
+	$settGlob = Plugin::SettGetGlobal();
 	$rmtCfg = PluginRmtCfg::Get();
 
 	$contRemindRefreshCache = vsprintf( Wp::safe_html_x( 'RemindRefreshCache_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Ui::Link( array( '', '' ), menu_page_url( 'seraph_accel_manage', false ) . '#operate' ) );
@@ -30,29 +33,35 @@ function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 				call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'CacheDirNotWrittable_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $dir ) ) );
 		}
 
-		if( IsWpCacheActive() )
+		if( !$seraph_accel_g_phpCfgFileChangedInCurrentSession )
 		{
-			$verifyEnvDropin = new AnyObj();
-			if( !isset( $sett[ PluginOptions::VERPREV ] ) && ( (isset($_SERVER[ 'REQUEST_METHOD' ])?$_SERVER[ 'REQUEST_METHOD' ]:null) == 'GET' ) && !CacheVerifyEnvDropin( $sett, $verifyEnvDropin ) )
+			if( IsWpCacheActive() )
 			{
-				if( !@file_exists( WP_CONTENT_DIR . '/advanced-cache.php' ) && !@is_writable( WP_CONTENT_DIR ) )
-					call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDirNotWrittable_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( WP_CONTENT_DIR ), 'advanced-cache.php' ) ) );
-				else if( !@is_writable( WP_CONTENT_DIR . '/advanced-cache.php' ) )
-					call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotWrittable_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( WP_CONTENT_DIR ), 'advanced-cache.php' ) ) );
-				else
-					call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotMatch_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( WP_CONTENT_DIR ), 'advanced-cache.php' ) . ( $ext ? '' : sprintf( Wp::safe_html_x( 'ContentDropinNotMatchEx_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), GetCodeViewHtmlBlock( $verifyEnvDropin -> needed ), GetCodeViewHtmlBlock( $verifyEnvDropin -> actual ) ) ) ) );
+				$verifyEnvDropin = new AnyObj(); $verifyEnvDropin -> file = null;
+				if( !CacheVerifyEnvDropin( $verifyEnvDropin -> file, $sett, $verifyEnvDropin ) && !isset( $sett[ PluginOptions::VERPREV ] ) && ( ($_SERVER[ 'REQUEST_METHOD' ]??null) == 'GET' ) )
+				{
+					if( !@file_exists( $verifyEnvDropin -> file ) && !@is_writable( dirname( $verifyEnvDropin -> file ) ) )
+						call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDirNotWrittable_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( dirname( $verifyEnvDropin -> file ) ), Gen::GetFileName( $verifyEnvDropin -> file ) ) ) );
+					else if( !@is_writable( $verifyEnvDropin -> file ) )
+						call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotWrittable_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( dirname( $verifyEnvDropin -> file ) ), Gen::GetFileName( $verifyEnvDropin -> file ) ) ) );
+
+					call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotMatch_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( dirname( $verifyEnvDropin -> file ) ), Gen::GetFileName( $verifyEnvDropin -> file ) ) . ( $ext ? '' : sprintf( Wp::safe_html_x( 'ContentDropinNotMatchEx_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), GetCodeViewHtmlBlock( $verifyEnvDropin -> needed ), GetCodeViewHtmlBlock( $verifyEnvDropin -> actual ) ) ) ) );
+				}
+				else if( !Gen::DoesFuncExist( 'seraph_accel_siteSettInlineDetach' ) )
+					call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotLoaded_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( dirname( $verifyEnvDropin -> file ) ), Gen::GetFileName( $verifyEnvDropin -> file ) ) ) );
 			}
-			else if( !Gen::DoesFuncExist( 'seraph_accel_siteSettInlineDetach' ) )
-				call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotLoaded_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( WP_CONTENT_DIR ), 'advanced-cache.php' ) ) );
-		}
-		else
-		{
-			$cfgFile = Wp::GetConfigFilePath();
-			if( !@is_writable( $cfgFile ) )
-				call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ConfigFileNotWrittable_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $cfgFile ) ) );
 			else
-				call_user_func_array( $cb, array( Ui::MsgErr, Wp::safe_html_x( 'WpCacheNotActive', 'admin.Notice', 'seraphinite-accelerator' ) ) );
+			{
+				$cfgFile = Wp::GetConfigFilePath();
+				if( !@is_writable( $cfgFile ) )
+					call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ConfigFileNotWrittable_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $cfgFile ) ) );
+				else
+					call_user_func_array( $cb, array( Ui::MsgErr, Wp::safe_html_x( 'WpCacheNotActive', 'admin.Notice', 'seraphinite-accelerator' ) ) );
+			}
 		}
+
+		if( !GetSalt() )
+			call_user_func_array( $cb, array( Ui::MsgErr, Wp::safe_html_x( 'WpSaltNotDefined', 'admin.Notice', 'seraphinite-accelerator' ) ) );
 
 		if( ( in_array( 'br', Gen::GetArrField( $sett, 'cache/encs', array(), '/' ) ) || in_array( 'brotli', Gen::GetArrField( $sett, 'cache/dataCompr', array(), '/' ) ) ) && @version_compare( @phpversion( 'brotli' ), '0.1.0' ) === -1 )
 			call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'PhpBrotliNotActive_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), 'BROTLI', '0.1.0' ) ) );
@@ -77,9 +86,31 @@ function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 
 	}
 
-	if( !isset( $sett[ PluginOptions::VERPREV ] ) && ( (isset($_SERVER[ 'REQUEST_METHOD' ])?$_SERVER[ 'REQUEST_METHOD' ]:null) == 'GET' ) && !CacheVerifyEnvNginxConf( $sett ) )
+	if( !$seraph_accel_g_phpCfgFileChangedInCurrentSession && Gen::GetArrField( $settGlob, array( 'cacheObj', 'enable' ), false ) )
 	{
-		call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentNginxConfNotMatch_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), Wp::GetHomePath() . 'seraph-accel-img-compr-redir.conf' ) ) );
+		$verifyEnvDropin = new AnyObj();
+		if( !isset( $sett[ PluginOptions::VERPREV ] ) && ( ($_SERVER[ 'REQUEST_METHOD' ]??null) == 'GET' ) && !CacheVerifyEnvObjDropin( $settGlob, $verifyEnvDropin ) )
+		{
+			if( !@file_exists( WP_CONTENT_DIR . '/object-cache.php' ) && !@is_writable( WP_CONTENT_DIR ) )
+				call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDirNotWrittable_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( WP_CONTENT_DIR ), 'object-cache.php' ) ) );
+			else if( !@is_writable( WP_CONTENT_DIR . '/object-cache.php' ) )
+				call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotWrittable_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( WP_CONTENT_DIR ), 'object-cache.php' ) ) );
+			else
+				call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotMatch_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( WP_CONTENT_DIR ), 'object-cache.php' ) . ( $ext ? '' : sprintf( Wp::safe_html_x( 'ContentDropinNotMatchEx_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), GetCodeViewHtmlBlock( $verifyEnvDropin -> needed ), GetCodeViewHtmlBlock( $verifyEnvDropin -> actual ) ) ) ) );
+		}
+		else
+		{
+			global $seraph_accel_settObjCache;
+			if( $seraph_accel_settObjCache === null )
+				call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotLoaded_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileName( WP_CONTENT_DIR ), 'object-cache.php' ) ) );
+		}
+	}
+
+	$verifyEnvDropin = new AnyObj();
+	if( !isset( $sett[ PluginOptions::VERPREV ] ) && ( ($_SERVER[ 'REQUEST_METHOD' ]??null) == 'GET' ) && !CacheVerifyEnvNginxConf( $settGlob, $sett, $verifyEnvDropin ) )
+	{
+
+		call_user_func_array( $cb, array( Ui::MsgErr, sprintf( Wp::safe_html_x( 'ContentDropinNotMatch_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), Gen::GetFileDir( CacheGetEnvNginxConfFile() ), Gen::GetFileName( CacheGetEnvNginxConfFile() ) ) . ( $ext ? '' : sprintf( Wp::safe_html_x( 'ContentDropinNotMatchEx_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), GetCodeViewHtmlBlock( $verifyEnvDropin -> needed ), GetCodeViewHtmlBlock( $verifyEnvDropin -> actual ) ) ) ) );
 	}
 
 	if( !Gen::DoesFuncExist( 'fsockopen' ) && !Gen::DoesFuncExist( 'curl_exec' ) )
@@ -158,69 +189,69 @@ function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 
 	$availablePlugins = Plugin::GetAvailablePluginsEx();
 
-	$plg = (isset($availablePlugins[ 'wp-smushit' ])?$availablePlugins[ 'wp-smushit' ]:null);
-	if( !$plg || !(isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
-		$plg = (isset($availablePlugins[ 'wp-smush-pro' ])?$availablePlugins[ 'wp-smush-pro' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-smushit' ]??null);
+	if( !$plg || !($plg[ 'IsActive' ]??null) )
+		$plg = ($availablePlugins[ 'wp-smush-pro' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		$plgOpts = get_option( 'wp-smush-settings' );
 
 	}
 
-	$plg = (isset($availablePlugins[ 'elementor' ])?$availablePlugins[ 'elementor' ]:null);
-	if( !$plg || !(isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
-		$plg = (isset($availablePlugins[ 'elementor-pro' ])?$availablePlugins[ 'elementor-pro' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'elementor' ]??null);
+	if( !$plg || !($plg[ 'IsActive' ]??null) )
+		$plg = ($availablePlugins[ 'elementor-pro' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 	}
 
-	$plg = (isset($availablePlugins[ 'ewww-image-optimizer' ])?$availablePlugins[ 'ewww-image-optimizer' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'ewww-image-optimizer' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 	}
 
-	$plg = (isset($availablePlugins[ 'webp-express' ])?$availablePlugins[ 'webp-express' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'webp-express' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 	}
 
-	$plg = (isset($availablePlugins[ 'rocket-lazy-load' ])?$availablePlugins[ 'rocket-lazy-load' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'rocket-lazy-load' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 	}
 
-	$plg = (isset($availablePlugins[ 'a3-lazy-load' ])?$availablePlugins[ 'a3-lazy-load' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'a3-lazy-load' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		$plgOpts = get_option( 'a3_lazy_load_global_settings' );
 
 	}
 
-	$plg = (isset($availablePlugins[ 'optimole-wp' ])?$availablePlugins[ 'optimole-wp' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'optimole-wp' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		$plgOpts = wp_parse_args( get_option( 'optml_settings' ) );
 
 	}
 
-	$plg = (isset($availablePlugins[ 'shortpixel-adaptive-images' ])?$availablePlugins[ 'shortpixel-adaptive-images' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'shortpixel-adaptive-images' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 	}
 
-	$plg = (isset($availablePlugins[ 'async-javascript' ])?$availablePlugins[ 'async-javascript' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'async-javascript' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 	}
 
-	$plg = (isset($availablePlugins[ 'revslider' ])?$availablePlugins[ 'revslider' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'revslider' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		$plgOpts = get_option( 'revslider-global-settings' );
 		if( !is_array( $plgOpts ) )
@@ -228,8 +259,8 @@ function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 
 	}
 
-	$plg = (isset($availablePlugins[ 'wp-optimize' ])?$availablePlugins[ 'wp-optimize' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-optimize' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 		$plgOpts = get_option( 'wpo_cache_config' );
@@ -238,49 +269,49 @@ function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 
 	}
 
-	$plg = (isset($availablePlugins[ 'wp-rocket' ])?$availablePlugins[ 'wp-rocket' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-rocket' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 
 	}
 
-	$plg = (isset($availablePlugins[ 'w3-total-cache' ])?$availablePlugins[ 'w3-total-cache' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'w3-total-cache' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 
 	}
 
-	$plg = (isset($availablePlugins[ 'nitropack' ])?$availablePlugins[ 'nitropack' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'nitropack' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'wp-fastest-cache' ])?$availablePlugins[ 'wp-fastest-cache' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
-	{
-		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
-
-	}
-
-	$plg = (isset($availablePlugins[ 'hummingbird-performance' ])?$availablePlugins[ 'hummingbird-performance' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-fastest-cache' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 
 	}
 
-	$plg = (isset($availablePlugins[ 'wp-hummingbird' ])?$availablePlugins[ 'wp-hummingbird' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'hummingbird-performance' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 
 	}
 
-	$plg = (isset($availablePlugins[ 'jetpack' ])?$availablePlugins[ 'jetpack' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-hummingbird' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
+	{
+		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
+
+	}
+
+	$plg = ($availablePlugins[ 'jetpack' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		$plgOpts = Gen::GetArrField( get_option( 'jetpack_active_modules' ), array( '' ), array() );
 		if( $isCacheEnabled && in_array( 'photon', $plgOpts ) )
@@ -288,23 +319,30 @@ function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 
 	}
 
-	$plg = (isset($availablePlugins[ 'autoptimize' ])?$availablePlugins[ 'autoptimize' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'jetpack-boost' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 	}
 
-	$plg = (isset($availablePlugins[ 'litespeed-cache' ])?$availablePlugins[ 'litespeed-cache' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'autoptimize' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
-		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'sg-cachepress' ])?$availablePlugins[ 'sg-cachepress' ]:null);
+	$plg = ($availablePlugins[ 'litespeed-cache' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
+	{
+
+		if( $isCacheEnabled && get_option( 'litespeed.conf.cache' ) )
+			call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdSett_ConflictSoft_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ], Wp::GetLocString( 'Enable Cache', null, 'litespeed-cache' ) ) ) );
+	}
+
+	$plg = ($availablePlugins[ 'sg-cachepress' ]??null);
 	if( $plg )
 	{
-		if( (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+		if( ($plg[ 'IsActive' ]??null) )
 		{
 			if( $isCacheEnabled && get_option( 'siteground_optimizer_enable_cache' ) && !$isExtCacheAllowed )
 				call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdSett_ConflictSoft_%1$s%2$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ], Wp::GetLocString( 'Dynamic Caching', null, 'sg-cachepress' ) ) ) );
@@ -317,76 +355,76 @@ function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 		}
 	}
 
-	$plg = (isset($availablePlugins[ 'fast-velocity-minify' ])?$availablePlugins[ 'fast-velocity-minify' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'fast-velocity-minify' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		if( $isCacheEnabled )
 			call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'breeze' ])?$availablePlugins[ 'breeze' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'breeze' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'wp-meteor' ])?$availablePlugins[ 'wp-meteor' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-meteor' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'wp-cloudflare-page-cache' ])?$availablePlugins[ 'wp-cloudflare-page-cache' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-cloudflare-page-cache' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'wp-super-cache' ])?$availablePlugins[ 'wp-super-cache' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-super-cache' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'a2-optimized-wp' ])?$availablePlugins[ 'a2-optimized-wp' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'a2-optimized-wp' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'wp-asset-clean-up' ])?$availablePlugins[ 'wp-asset-clean-up' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'wp-asset-clean-up' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'perfmatters' ])?$availablePlugins[ 'perfmatters' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'perfmatters' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		$plgOpts = get_option( 'perfmatters_options' );
 
 	}
 
-	$plg = (isset($availablePlugins[ 'flying-pages' ])?$availablePlugins[ 'flying-pages' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'flying-pages' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'flying-scripts' ])?$availablePlugins[ 'flying-scripts' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'flying-scripts' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'debloat' ])?$availablePlugins[ 'debloat' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'debloat' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 		call_user_func_array( $cb, array( Gen::SevErr, sprintf( Wp::safe_html_x( '3rdMdl_Conflict_%1$s', 'admin.Notice', 'seraphinite-accelerator' ), $plg[ 'Name' ] ) ) );
 	}
 
-	$plg = (isset($availablePlugins[ 'clearfy' ])?$availablePlugins[ 'clearfy' ]:null);
-	if( $plg && (isset($plg[ 'IsActive' ])?$plg[ 'IsActive' ]:null) )
+	$plg = ($availablePlugins[ 'clearfy' ]??null);
+	if( $plg && ($plg[ 'IsActive' ]??null) )
 	{
 
 		$deactive_preinstall_components = Gen::GetArrField( get_option( 'wbcr_clearfy_deactive_preinstall_components' ), array( '' ), array() );
@@ -466,7 +504,7 @@ function SelfDiag_DetectStateAnd3rdPartySettConflicts( $cb, $ext = false )
 			}
 			else
 			{
-				$contMimeType = ( string )wp_remote_retrieve_header( $requestRes, 'content-type' );
+				$contMimeType = ( string )Net::GetHeaderFromWpRemoteRequestRes( $requestRes, 'content-type' );
 
 				if( strpos( $contMimeType, $contMimeTypeTest ) === false )
 					call_user_func_array( $cb, array( Gen::SevWarn, vsprintf( Wp::safe_html_x( 'ImgConvRedir_NotActive_%1$s%2$s%3$s%4$s%5$s', 'admin.Notice', 'seraphinite-accelerator' ), array_merge( Ui::Link( array( '', '' ), Plugin::RmtCfgFld_GetLoc( $rmtCfg, 'Help.Settings_Images_Compr' ), true, array(  ) ), array( $comprType, $optionText, esc_html_x( 'RedirOwnChk', 'admin.Settings_Images_Compr', 'seraphinite-accelerator' ) ) ) ) ) );

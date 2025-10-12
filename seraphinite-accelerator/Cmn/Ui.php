@@ -13,13 +13,13 @@ class Ui
 		if( $attrs === null )
 			$attrs = array();
 
-		$showLink = !empty( $href ) || (isset($prms[ 'showIfNoHref' ])?$prms[ 'showIfNoHref' ]:null);
+		$showLink = !empty( $href ) || ($prms[ 'showIfNoHref' ]??null);
 
 		if( $showLink )
 		{
 			$resPart = '';
 
-			$linkPreContent = (isset($prms[ 'linkPreContent' ])?$prms[ 'linkPreContent' ]:null);
+			$linkPreContent = ($prms[ 'linkPreContent' ]??null);
 			if( $linkPreContent )
 				$resPart .= $linkPreContent;
 
@@ -37,7 +37,7 @@ class Ui
 			else
 				$content = $resPart . $content;
 		}
-		else if( (isset($prms[ 'noTextIfNoHref' ])?$prms[ 'noTextIfNoHref' ]:null) )
+		else if( ($prms[ 'noTextIfNoHref' ]??null) )
 		{
 			if( !is_array( $content ) )
 				return( '' );
@@ -54,7 +54,7 @@ class Ui
 		{
 			$resPart = Ui::TagClose( 'a' );
 
-			$linkAfterContent = (isset($prms[ 'linkAfterContent' ])?$prms[ 'linkAfterContent' ]:null);
+			$linkAfterContent = ($prms[ 'linkAfterContent' ]??null);
 			if( $linkAfterContent )
 				$resPart .= $linkAfterContent;
 
@@ -91,18 +91,18 @@ class Ui
 				if( isset( $txtItem[ 2 ] ) )
 					$switchDefVal = $txtItem[ 2 ];
 
-				$attrsForCombo = (isset($txtItem[ 3 ])?$txtItem[ 3 ]:null);
+				$attrsForCombo = ($txtItem[ 3 ]??null);
 				if( !is_array( $attrsForCombo ) )
 					$attrsForCombo = array();
 				Gen::SetArrField( $attrsForCombo, 'class.+', 'inline' );
-				Gen::SetArrField( $attrsForCombo, 'disabled', (isset($attrs[ 'disabled' ])?$attrs[ 'disabled' ]:null) );
+				Gen::SetArrField( $attrsForCombo, 'disabled', ($attrs[ 'disabled' ]??null) );
 
 				foreach( $txtItem[ 1 ] as $txtItemVal )
 				{
 					if( isset( $txtItemVal[ 2 ] ) && $txtItemVal[ 2 ] )
 						$switchDefVal = $txtItemVal[ 0 ];
 
-					$itemAttrs = (isset($txtItemVal[ 3 ])?$txtItemVal[ 3 ]:null);
+					$itemAttrs = ($txtItemVal[ 3 ]??null);
 					if( !is_array( $itemAttrs ) )
 						$itemAttrs = array( 'disabled' => $itemAttrs );
 					$switchOptions[ $txtItemVal[ 0 ] ] = array( $txtItemVal[ 1 ], $itemAttrs );
@@ -146,7 +146,7 @@ class Ui
 		if( !is_array( $attrsForLabel ) )
 			$attrsForLabel = array();
 
-		$attrs[ 'disabled' ] = (isset($attrsForLabel[ 'disabled' ])?$attrsForLabel[ 'disabled' ]:null);
+		$attrs[ 'disabled' ] = ($attrsForLabel[ 'disabled' ]??null);
 
 		if( !empty( $title ) )
 			$attrs[ 'title' ] = $attrsForLabel[ 'title' ] = $title;
@@ -180,8 +180,8 @@ class Ui
 			$itemAttrs = null;
 			if( is_array( $itemText ) )
 			{
-				$itemAttrs = (isset($itemText[ 1 ])?$itemText[ 1 ]:null);
-				$itemText = (isset($itemText[ 0 ])?$itemText[ 0 ]:null);
+				$itemAttrs = ($itemText[ 1 ]??null);
+				$itemText = ($itemText[ 0 ]??null);
 			}
 
 			if( !is_array( $itemAttrs ) )
@@ -227,8 +227,8 @@ class Ui
 			$itemAttrs = null;
 			if( is_array( $itemText ) )
 			{
-				$itemAttrs = (isset($itemText[ 1 ])?$itemText[ 1 ]:null);
-				$itemText = (isset($itemText[ 0 ])?$itemText[ 0 ]:null);
+				$itemAttrs = ($itemText[ 1 ]??null);
+				$itemText = ($itemText[ 0 ]??null);
 			}
 
 			if( !is_array( $itemAttrs ) )
@@ -285,7 +285,7 @@ class Ui
 		if( !empty( $id ) )
 			$attrs[ 'id' ] = $id;
 		else
-			$id = (isset($attrs[ 'id' ])?$attrs[ 'id' ]:null);
+			$id = ($attrs[ 'id' ]??null);
 
 		if( !empty( $id ) && $addNames )
 		{
@@ -388,8 +388,8 @@ class Ui
 
 		$prms = explode( ';', substr( $v, 5, $data - 5 ) );
 		$data = trim( substr( $v, $data + 1 ) );
-		$mimeType = (isset($prms[ 0 ])?$prms[ 0 ]:null);
-		$encoding = (isset($prms[ count( $prms ) - 1 ])?$prms[ count( $prms ) - 1 ]:null);
+		$mimeType = ($prms[ 0 ]??null);
+		$encoding = ($prms[ count( $prms ) - 1 ]??null);
 		return( $encoding == 'base64' ? base64_decode( $data ) : rawurldecode( $data ) );
 	}
 
@@ -409,26 +409,21 @@ class Ui
 	{
 
 		$res = array();
-		$lastSrcData = null;
-
-		foreach( explode( ',', $v ) as $args )
+		while( preg_match( '@(?:\\s[\\d.]+[wx](,)|(,\\s))@S', $v, $m, PREG_OFFSET_CAPTURE ) )
 		{
-			$args = array_map( 'trim', explode( ' ', Gen::StrReplaceWhileChanging( '  ', ' ', str_replace( array( "\t", "\r", "\n", "\0", "\x0B" ), ' ', trim( $args ) ) ) ) );
-
-			if( Ui::IsSrcAttrData( $args[ 0 ] ) )
-			{
-				$lastSrcData = $args[ 0 ];
-				continue;
-			}
-
-			if( $lastSrcData )
-			{
-				$args[ 0 ] = $lastSrcData . ',' . $args[ 0 ];
-				$lastSrcData = null;
-			}
-
-			$res[] = $args;
+			if( $m[ 1 ][ 1 ] === -1 )
+				$m[ 1 ] = $m[ 2 ];
+			$res[] = substr( $v, 0, $m[ 1 ][ 1 ] );
+			$v = substr( $v, $m[ 1 ][ 1 ] + strlen( $m[ 1 ][ 0 ] ) );
 		}
+		$res[] = $v;
+
+		$res = array_map(
+			function( $resI )
+			{
+				return( array_map( 'trim', explode( ' ', Gen::StrReplaceWhileChanging( '  ', ' ', str_replace( array( "\t", "\r", "\n", "\0", "\x0B" ), ' ', trim( $resI ) ) ) ) ) );
+			}
+		, $res );
 
 		return( $res );
 	}
@@ -503,7 +498,7 @@ class Ui
 
 		$res = '';
 
-		$masked = (isset($attrs[ 'masked' ])?$attrs[ 'masked' ]:null);
+		$masked = ($attrs[ 'masked' ]??null);
 		if( $masked )
 		{
 			unset( $attrs[ 'id' ] );
@@ -533,7 +528,7 @@ class Ui
 
 		$res = '';
 
-		$masked = (isset($attrs[ 'masked' ])?$attrs[ 'masked' ]:null);
+		$masked = ($attrs[ 'masked' ]??null);
 		if( $masked )
 		{
 			unset( $attrs[ 'id' ] );
@@ -626,7 +621,14 @@ class Ui
 		$iCol = 0;
 		foreach( $aCell as $cell )
 		{
-			$o .= Ui::Tag( 'td', call_user_func( $cell, $ctx ) );
+			$cell = call_user_func( $cell, $ctx );
+			if( is_array( $cell ) )
+			{
+				$o .= Ui::Tag( 'th', $cell[ 0 ] );
+				$cell = $cell[ 1 ];
+			}
+
+			$o .= Ui::Tag( 'td', $cell );
 			$iCol++;
 
 			if( $iCol === $nCols )
@@ -645,7 +647,7 @@ class Ui
 		if( $content === null )
 			$content = '';
 
-		if( (isset($prms[ 'noTagsIfNoContent' ])?$prms[ 'noTagsIfNoContent' ]:null) && empty( $content ) )
+		if( ($prms[ 'noTagsIfNoContent' ]??null) && empty( $content ) )
 			return( $content );
 
 		$resPart = self::TagOpen( $name, $attrs, $selfClose );
@@ -659,7 +661,7 @@ class Ui
 
 		$resPart = self::TagClose( $name );
 
-		$afterContent = (isset($prms[ 'afterContent' ])?$prms[ 'afterContent' ]:null);
+		$afterContent = ($prms[ 'afterContent' ]??null);
 		if( $afterContent )
 			$resPart .= $afterContent;
 
@@ -717,7 +719,7 @@ class Ui
 		if( $attrs === null )
 			$attrs = array();
 
-		$masked = (isset($attrs[ 'masked' ])?$attrs[ 'masked' ]:null);
+		$masked = ($attrs[ 'masked' ]??null);
 
 		$value = @rawurlencode( @wp_json_encode( $value ) );
 		if( $masked )
@@ -725,7 +727,7 @@ class Ui
 		$attrsVal = array( 'type' => 'hidden', 'value' => $value );
 
 		self::_AddIdName( $attrs, $id, $addNames );
-		if( (isset($attrs[ 'name' ])?$attrs[ 'name' ]:null) )
+		if( ($attrs[ 'name' ]??null) )
 		{
 			$attrsVal[ 'name' ] = $attrs[ 'name' ];
 			unset( $attrs[ 'name' ] );
@@ -738,7 +740,7 @@ class Ui
 		return( Ui::Tag( 'div', Ui::TagOpen( 'input', $attrsVal, true ), $attrs ) );
 	}
 
-	static function TokensList_GetVal( $value, callable $cbItem = null, $unmask = false )
+	static function TokensList_GetVal( $value,  $cbItem = null, $unmask = false )
 	{
 		$value = @stripslashes( $value );
 		if( $unmask )
@@ -762,9 +764,9 @@ class Ui
 	{
 		$res = '';
 
-		$onDelItemJsCb = (isset($prms[ 'onDelItemJsCb' ])?$prms[ 'onDelItemJsCb' ]:null);
-		$sortable = (isset($prms[ 'sortable' ])?$prms[ 'sortable' ]:null);
-		$sortableDrag = (isset($prms[ 'sortDrag' ])?$prms[ 'sortDrag' ]:null);
+		$onDelItemJsCb = ($prms[ 'onDelItemJsCb' ]??null);
+		$sortable = ($prms[ 'sortable' ]??null);
+		$sortableDrag = ($prms[ 'sortDrag' ]??null);
 		if( $sortableDrag === null )
 			$sortableDrag = true;
 
@@ -786,7 +788,7 @@ class Ui
 		$contentItemEnd = Ui::TagClose( 'li' );
 
 		$initCount = 0;
-		$itemsLimit = (isset($prms[ 'itemsLimit' ])?$prms[ 'itemsLimit' ]:null);
+		$itemsLimit = ($prms[ 'itemsLimit' ]??null);
 		foreach( $items as $itemKey => $item )
 		{
 			if( $itemsLimit !== null && $initCount > $itemsLimit )
@@ -815,7 +817,7 @@ class Ui
 
 		$res = '';
 
-		if( (isset($prms[ 'sortable' ])?$prms[ 'sortable' ]:null) )
+		if( ($prms[ 'sortable' ]??null) )
 		{
 			$res .= Ui::Button( Ui::Tag( 'span', null, array( 'class' => 'dashicons dashicons-arrow-up', 'style' => array( 'display' => 'table-cell' ) ) ), false, null, null, 'button', array_merge( $attrs, Gen::GetArrField( $prms, 'btnsItemOperate.up.attrs', array() ) ) );
 			$res .= Ui::Button( Ui::Tag( 'span', null, array( 'class' => 'dashicons dashicons-arrow-down', 'style' => array( 'display' => 'table-cell' ) ) ), false, null, null, 'button', array_merge( $attrs, Gen::GetArrField( $prms, 'btnsItemOperate.down.attrs', array() ) ) );
@@ -878,7 +880,7 @@ class Ui
 				$v = null;
 			}
 
-			if( !(isset($resTmp[ $itemKey ])?$resTmp[ $itemKey ]:null) )
+			if( !($resTmp[ $itemKey ]??null) )
 				$resTmp[ $itemKey ] = $cbItem ? call_user_func( $cbItem, $cbArgs, $idItems, $itemKey, $v, $request ) : ( $v !== null ? $v : true );
 		}
 
@@ -982,14 +984,14 @@ class Ui
 		return( self::_MetaboxAdd( $id, $title, $callback, $callbacks_args, null, $context, 'default', $classesAdd, $classesRemove ) );
 	}
 
-	static function PostBoxes( $title, $metaBoxes = array( 'body' => null ), array $callbacks = null, $callbacks_args = null, $blocksAttrs = null )
+	static function PostBoxes( $title, $metaBoxes = array( 'body' => null ),  $callbacks = null, $callbacks_args = null, $blocksAttrs = null )
 	{
 		wp_enqueue_script( 'postbox' );
 
 		{
 			$dropBoxes = array();
 			foreach( $metaBoxes as $metaBoxId => $metaBox )
-				if( $metaBox && (isset($metaBox[ 'nosort' ])?$metaBox[ 'nosort' ]:null) )
+				if( $metaBox && ($metaBox[ 'nosort' ]??null) )
 					$dropBoxes[] = $metaBoxId;
 
 			if( count( $dropBoxes ) )
@@ -1032,7 +1034,7 @@ class Ui
 
 			<?php
 
-				$cbHeader = (isset($callbacks[ 'header' ])?$callbacks[ 'header' ]:null);
+				$cbHeader = ($callbacks[ 'header' ]??null);
 				if( $cbHeader )
 					call_user_func( $cbHeader, $callbacks_args );
 
@@ -1046,14 +1048,14 @@ class Ui
 						<?php
 
 						{
-							$cb = (isset($callbacks[ 'bodyContentBegin' ])?$callbacks[ 'bodyContentBegin' ]:null);
+							$cb = ($callbacks[ 'bodyContentBegin' ]??null);
 							if( $cb )
 								call_user_func( $cb, $callbacks_args );
 						}
 
 						{
 							{
-								$cb = (isset($callbacks[ 'body' ])?$callbacks[ 'body' ]:null);
+								$cb = ($callbacks[ 'body' ]??null);
 								if( $cb )
 									call_user_func( $cb, $callbacks_args );
 							}
@@ -1065,7 +1067,7 @@ class Ui
 						}
 
 						{
-							$cb = (isset($callbacks[ 'bodyContentEnd' ])?$callbacks[ 'bodyContentEnd' ]:null);
+							$cb = ($callbacks[ 'bodyContentEnd' ]??null);
 							if( $cb )
 								call_user_func( $cb, $callbacks_args );
 						}
@@ -1100,7 +1102,7 @@ class Ui
 
 					foreach( $metaBoxes as $metaBoxId => $metaBox )
 					{
-						if( !$metaBox || !(isset($metaBox[ 'nosort' ])?$metaBox[ 'nosort' ]:null) )
+						if( !$metaBox || !($metaBox[ 'nosort' ]??null) )
 							continue;
 
 					?>_MetaboxesBlock_DisableSortable( ctlMetaboxHolder, "<?php echo( esc_attr( $metaBoxId ) ); ?>" );
@@ -1288,7 +1290,7 @@ class Ui
 			if( $item === null )
 				continue;
 
-			$newWnd = (isset($item[ 'newWnd' ])?$item[ 'newWnd' ]:null);
+			$newWnd = ($item[ 'newWnd' ]??null);
 			if( $newWnd === null )
 				$newWnd = true;
 
@@ -1300,7 +1302,7 @@ class Ui
 			else
 				$prms[ 'noTextIfNoHref' ] = true;
 
-			$res .= Ui::Link( $linkParams[ 'content' ], (isset($item[ 'href' ])?$item[ 'href' ]:null), $newWnd, $prms, $linkParams[ 'attrs' ] );
+			$res .= Ui::Link( $linkParams[ 'content' ], ($item[ 'href' ]??null), $newWnd, $prms, $linkParams[ 'attrs' ] );
 		}
 
 		return( Ui::Tag( 'span', Ui::Tag( 'span', $res, array( 'class' => array( $mode ) ) ), array( 'class' => array( 'mbtns' ) ) ) );
@@ -1362,6 +1364,22 @@ class Ui
 		return( Ui::Tag( 'style', $content, $attrs ) );
 	}
 
+	static function StyleMediaMinMax( $min, $max )
+	{
+		$res = '';
+
+		if( $min )
+			$res .= '(min-width: ' . ( string )$min . 'px)';
+
+		if( $min && $max )
+			$res .= ' and ';
+
+		if( $max )
+			$res .= '(max-width: ' . ( string )$max . 'px)';
+
+		return( $res );
+	}
+
 	static function TagGetPos( $tag, $data, $offset = 0 )
 	{
 		$posBegin = Ui::TagBeginGetPos( $tag, $data, $offset );
@@ -1383,7 +1401,7 @@ class Ui
 				return( false );
 			$pos = $pos[ 0 ][ 1 ];
 
-			if( $bSkipComments && substr( $data, $pos + 1, 1 ) == '!' )
+			if( $bSkipComments && substr( $data, $pos + 1, 2 ) == '!-' )
 			{
 				$offset = strpos( $data, '-->', $pos + 4 );
 				if( $offset === false )
@@ -1443,6 +1461,38 @@ class Ui
 		$n = strlen( $tag[ 0 ] );
 		$posEnd = $pos + $n;
 		return( array( $pos, $posEnd, $n ) );
+	}
+
+	static function TagOffsetPos( &$tagPos, $offset = 0 )
+	{
+		if( $tagPos )
+		{
+			$tagPos[ 0 ] += $offset;
+			$tagPos[ 1 ] += $offset;
+		}
+	}
+
+	static function SettTokensEditor( $fldId, $v, $placeholder, $ns, $sep = "\n", $height = 5, $masked = false )
+	{
+		$o = '';
+
+		$o .= ( Ui::TokensList( $v, $ns . '/' . $fldId, array( 'masked' => $masked, 'class' => 'vals ctlSpaceVAfter', 'style' => array( 'min-height' => '3em', 'height' => '' . $height . 'em', 'max-height' => '20em' ), 'data-oninit' => 'seraph_accel.Ui.TokensList.InitItems( this, true )' ), true ) );
+
+		$o .= ( Ui::SettBlock_ItemSubTbl_Begin( array( 'class' => 'std', 'style' => array( 'width' => '100%' ) ) ) . Ui::TagOpen( 'tr' ) );
+		{
+			if( $sep === "\n" )
+				$o .= ( Ui::Tag( 'td', Ui::TextArea( null, null, array( 'class' => 'val', 'wrap' => 'off', 'placeholder' => $placeholder, 'style' => array( 'width' => '100%', 'height' => '1em', 'max-height' => '15em', 'line-height' => '1.5' ) ) ), array( 'class' => 'wp-pwd'  ) ) );
+			else
+				$o .= ( Ui::Tag( 'td', Ui::TextBox( null, '', array( 'class' => 'val', 'placeholder' => $placeholder, 'style' => array( 'width' => '100%' ) ) ) ) );
+			$o .= ( Ui::Tag( 'td',
+				Ui::Button( esc_html( Wp::GetLocString( array( 'AddItemBtn', 'admin.Common_ItemsList' ), null, 'seraphinite-accelerator' ) ), false, null, array( 'ctlSpaceAfterSm' ), 'button', array( 'onclick' => 'seraph_accel.PluginAdmin._int.StrItem_OnAdd( this, ' . @json_encode( $sep ) . ' ); return false;' ) ) .
+				Ui::Button( Ui::Tag( 'span', null, array( 'class' => 'dashicons dashicons-admin-page', 'style' => array( 'display' => 'table-cell' ) ) ), false, null, array( 'ctlSpaceAfterSm' ), 'button', array( 'onclick' => 'seraph_accel.PluginAdmin._int.StrItem_OnCopyAll( this ); return false;' ) ) .
+				Ui::Button( Ui::Tag( 'span', null, array( 'class' => 'dashicons dashicons-trash', 'style' => array( 'display' => 'table-cell' ) ) ), false, null, null, 'button', array( 'onclick' => 'seraph_accel.PluginAdmin._int.StrItem_OnDelAll( this ); return false;' ) )
+			, array( 'style' => array( 'width' => '1px', 'text-wrap' => 'nowrap' ) ) ) );
+		}
+		$o .= ( Ui::TagClose( 'tr' ) . Ui::SettBlock_ItemSubTbl_End() );
+
+		return( $o );
 	}
 }
 

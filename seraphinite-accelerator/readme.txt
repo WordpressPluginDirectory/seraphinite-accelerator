@@ -4,8 +4,8 @@ Donate link: https://www.s-sols.com/products/wordpress/accelerator#offer
 Tags: optimize,pagespeed,performance,speed up,cache
 Requires PHP: 7.1
 Requires at least: 4.5
-Tested up to: 6.7
-Stable tag: 2.26
+Tested up to: 6.8
+Stable tag: 2.27.45
 License: GPLv2 or later (if another license is not provided)
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Privacy policy: https://www.s-sols.com/privacy-policy
@@ -161,6 +161,579 @@ We kindly ask you to [post reviews](https://wordpress.org/support/plugin/seraphi
 17. Settings - Advanced.
 
 == Changelog ==
+
+= 2.27.45 =
+
+Improvements:
+
+* Player from Presto.
+* Product gallery images thumbnails of WooCommerce from Carafity theme.
+* Support for Simple Menu of Essential Addons.
+
+Fixes:
+
+* Delayed click doesn't work on shadow root element.
+* Deprecation warning in 'TokensList_GetVal' of 'cbItem' parameter.
+* User cache doesn't work if simple thread of optimization enabled.
+
+= 2.27.44 =
+
+Improvements:
+
+* Optional arguments of 'termsOfClass' expression.
+
+Fixes:
+
+* Asynchronous tasks execution: timestamp is wrong on some servers.
+
+= 2.27.43 =
+
+Improvements:
+
+* Counter Widget of Elementor.
+* Funfact Counter Widget of Mascot Core Plugin for Elementor.
+* Preventing license checking from wrong site ID.
+
+Fixes:
+
+* Always correcting 'advanced-cache.php' file while being profiled under Code Profiler.
+
+= 2.27.42 =
+
+Improvements:
+
+* Support for 'WP Hide & Security Enhancer' plugin.
+
+= 2.27.41 =
+
+Improvements:
+
+* Updating all cache after global changes (e.g. menus, Elementor template etc.).
+
+Fixes:
+
+* Deinlining fonts in external CSS produces wrong URL.
+* Infinite operation progress in base version.
+* Styles parser: URLs in 'background-image' in functions are not processed.
+
+= 2.27.40 =
+
+Improvements:
+
+* Automatically remove unavailable styles and scripts.
+* Preventing styles combining while fast content optimization to avoid wrong formatting styles affect other styles.
+* Warning about broken class auto-loading.
+
+Fixes:
+
+* In 'Simple thread of optimization' is enabled optimization process can return 'noHdrOrBody' on URLS with no ending slash.
+
+= 2.27.39 =
+
+Improvements:
+
+* Product gallery images of WooCommerce.
+
+Fixes:
+
+* PHP warnings to access to non-existed cache files.
+* Wrong parsing sizes like 1.2345e10px.
+
+= 2.27.38 =
+
+Improvements:
+
+* Deinline large images.
+* Product gallery images of WooCommerce.
+* Warning about LiteSpeed caching.
+* Work only for fresh parts for cache views.
+* Workaround for JetElements For Elementor that empties content for optimization.
+
+Fixes:
+
+* PHP warning: strpos(): /Cmn/Ext/PHP/jsmin-php/JSMin.php.
+
+= 2.27.37 =
+
+Improvements:
+
+* Trying to always keep a content of 'advanced-cache.php' file in a right state.
+* Warning about broken class auto-loading.
+
+Fixes:
+
+* Wrong parsing sizes like 1.2345e10px.
+
+= 2.27.36 =
+
+Fixes:
+
+* In 'Simple thread of optimization' is enabled optimization process can return 'noHdrOrBody' on URLS with no ending slash.
+
+= 2.27.35 =
+
+Improvements:
+
+* Warning about broken class auto-loading.
+
+Fixes:
+
+* Activation on 'mystagingwebsite.com' with wrong site address.
+* Setting can be saved incorrectly in 'wp-config.php' under BatCache based hostings.
+
+= 2.27.34 =
+
+Improvements:
+
+* Product gallery slider from WooGallery for WooCommerce.
+* Selection of all GEO locations in operations.
+
+= 2.27.33 =
+
+Improvements:
+
+* Animation of TRX Addons for Elementor.
+* Simple thread of optimization.
+* Support for animations of Elementor.
+* Swiper Slider from XStore theme.
+* XStore theme.
+
+= 2.27.32 =
+
+Improvements:
+
+* Simple thread of optimization.
+
+= 2.27.31 =
+
+Improvements:
+
+* Preventing random content to avoid cache growing: XStore Theme.
+* Sticky elements from Divi.
+* Warning about missed SALT in WordPress configuration.
+
+= 2.27.30 =
+
+Improvements:
+
+* Countdown Widget of Elementor.
+
+Fixes:
+
+* Setting can be saved incorrectly in 'wp-config.php' under BatCache based hostings.
+
+= 2.27.29 =
+
+Fixes:
+
+* Cache control 'max-age' parameter is always 0.
+* While multiple parallel optimization error of modifying data locker can occur.
+
+= 2.27.28 =
+
+Improvements:
+
+* Slider from Divi.
+
+Fixes:
+
+* Parsing CSS: deleting 'unicode-range' if contains 'u%2B' values.
+
+= 2.27.27 =
+
+Improvements:
+
+* Conditions for HTML's replacements.
+* Lazy revalidation of user cache.
+* Lazy styles loading from KPPassive.
+
+Fixes:
+
+* Fast optimization happens if 'temporary cache not optimized content at initial revalidation' if turned off.
+* Internal requests can lead to growing 'SERVER_SOFTWARE' string.
+
+= 2.27.26 =
+
+Improvements:
+
+* Using free version with full on multisite.
+
+Fixes:
+
+* Cache auto-update doesn't work if invalid expressions are defined.
+* Multisite network activation/deactivation generates wrong config.
+
+= 2.27.25 =
+
+Improvements:
+
+* Changing processing priority in revalidation expressions.
+* Fast content optimization in temporary cache.
+
+Fixes:
+
+* Anchor scrolling doesn't happen if lazy HTML is enabled with BJS specification.
+* Cache auto-update doesn't work if invalid expressions are defined.
+
+= 2.27.24 =
+
+Fixes:
+
+* Masked URLs symbols are converted to '%2A' if TranslatePress is active.
+* Setting 'define' values in 'wp-config.php' doesnt matter if they are located after including of 'wp-settings.php'.
+
+= 2.27.23 =
+
+Improvements:
+
+* HTML parsing: Correcting missed '!doctype' tag.
+
+Fixes:
+
+* Object Cache: Multisite: Call to undefined function get_current_site().
+
+= 2.27.22 =
+
+Improvements:
+
+* Inlining critical fonts.
+
+Fixes:
+
+* Initiating cache updating: Vulnerability: Cross-Site Request Forgery to Multiple Administrative Actions.
+* PHP error: Division by zero in 'content_frm.php'.
+
+= 2.27.21 =
+
+Improvements:
+
+* Inlining critical fonts.
+
+Fixes:
+
+* PHP error: Undefined class 'WPH_Rewrite_Process' while saving settings.
+
+= 2.27.20 =
+
+Improvements:
+
+* Product gallery images of WooCommerce.
+
+Fixes:
+
+* Cache revalidation: Headers already sent by cache.php.
+
+= 2.27.19 =
+
+Fixes:
+
+* Product gallery images of WooCommerce: not needed thumbnail if only one image.
+
+= 2.27.18 =
+
+Improvements:
+
+* Player from Presto.
+* Preventing random content to avoid cache growing: Product Quantity from WooCommerce.
+* Preventing random content to avoid cache growing: XStore Theme.
+* Product gallery images of WooCommerce.
+* Requests cache.
+
+Fixes:
+
+* Asynchronous tasks execution: internal: Cookie values are not properly decoded.
+* Large URL at the bottom is shown while hovering on lazy video.
+
+= 2.27.17 =
+
+Improvements:
+
+* Normalizing tags near 'DOCTYPE'.
+* Product gallery images of WooCommerce.
+* Product gallery images thumbnails of WooCommerce from FlatSome theme.
+
+= 2.27.16 =
+
+Improvements:
+
+* Product gallery images thumbnails height of WooCommerce from Astra theme.
+
+Fixes:
+
+* Product gallery images thumbnails height of WooCommerce from Astra: thumbnail scrolling works only after clicking.
+* Slideshow with backgrounds of Elementor.
+
+= 2.27.15 =
+
+Improvements:
+
+* Product gallery images of WooCommerce.
+* Product gallery images thumbnails height of WooCommerce from Astra theme.
+
+= 2.27.14 =
+
+Improvements:
+
+* Images adaptation: Resizing sharpness.
+* Product gallery images of WooCommerce.
+
+= 2.27.13 =
+
+Improvements:
+
+* Disabling emoji now only during optimization.
+* Headline Animation Widget of Elementor.
+* Product gallery images of WooCommerce from Breakdance.
+
+Fixes:
+
+* Duplicated ID of styles under 'noscript' tag.
+
+= 2.27.12 =
+
+Improvements:
+
+* Plugin only one instance launch protection.
+* Preventing random content to avoid cache growing: TRX Addons for Elementor.
+* Product gallery from Oxy Ultimate Woo.
+
+= 2.27.11 =
+
+Improvements:
+
+* Images adaptation: Device Pixel Ratio minimal limit.
+* Images adaptation: Resizing sharpness.
+* Images lazy loading: Option for raster placeholders.
+* Independant GEO location detection.
+
+Fixes:
+
+* Images adaptation: can be wrong background image if different images are defined depend on screen width.
+
+= 2.27.10 =
+
+Fixes:
+
+* Base plugin is not automatically deactivated.
+
+= 2.27.9 =
+
+Improvements:
+
+* Countdown Widget of Essential Addons.
+
+Fixes:
+
+* Displaying warning about Default lazy loading in modules for Slider Revolution 6.7 ang higher.
+* Displaying warning about not loaded 'advanced-cache.php' just after its changing.
+* PHP error: 'clone' method called on non-object in 'content_css.php'.
+
+= 2.27.8 =
+
+Improvements:
+
+* Countdown Widget of Essential Addons.
+* Image adaptation of composite backgrounds.
+* Plugin only one instance launch protection.
+
+= 2.27.7 =
+
+Improvements:
+
+* Currency Switcher from Aelia.
+
+Fixes:
+
+* Images adaptation: error if image has zero width.
+* Some optimized styles can be lost after using self-learning data.
+
+= 2.27.6 =
+
+Improvements:
+
+* Auto-update cache depending on time in meta fields.
+
+Fixes:
+
+* Incorrect parsing of 'srcset' attribute containing commas in URL.
+
+= 2.27.5 =
+
+Improvements:
+
+* Slider from Divi.
+* Support for multi view loading from Divi.
+
+= 2.27.4 =
+
+Improvements:
+
+* Object cache.
+* Server and cloud cache warming up.
+* Support of NGINX and HTACCESS config for multisite.
+
+= 2.27.3 =
+
+Improvements:
+
+* Preventing random content to avoid cache growing: G5 ERE.
+* Support for animations of Elementor.
+* Warning about wrong 'seraph-accel-img-compr-redir.conf' can be shown while using on multisite.
+
+= 2.27.2 =
+
+Improvements:
+
+* Cache clearing of Pressable.
+
+Fixes:
+
+* Cache clearing of Hostinger: can lead to high CPU usage.
+
+= 2.27.1 =
+
+Improvements:
+
+* Requests cache.
+* Support files processing when 'wp-content' directory is not under site's root directory.
+
+Fixes:
+
+* After fast optimization some depended assets can be deleted while cleaning up.
+* Updating comments pages can lead to update URL like /comment-page-%2a/.
+
+= 2.27 =
+
+Improvements:
+
+* Cache clearing of Hostinger.
+* Server and cloud cache warming up.
+* Support for BatCache based hostings (Pressable, WordPress.Com).
+* Support of particular event specification in lazy interactions exclusions.
+* Updating all cache after global changes (e.g. menus, Elementor template etc.).
+* Updating cache of all languages if TranslatePress is used.
+
+Fixes:
+
+* Delayed click can be processed of element in exclusions.
+* Incorrect parsing of 'srcset' attribute containing commas in URL.
+* PHP Warning: Undefined array key 2 in \Cmn\Ext\PHP\php-css-parser\Value\Value.php.
+
+= 2.26.10 =
+
+Improvements:
+
+* Images adaptation: Added processing of 2160 px width.
+
+Fixes:
+
+* Custom styles: '@import' directive processed incorrectly if used in the non top block.
+* Large data in async tasks file while logging post update reasons.
+
+= 2.26.9 =
+
+New features:
+
+* Object cache.
+
+= 2.26.8 =
+
+New features:
+
+* Object cache.
+
+Improvements:
+
+* Getting Vimeo thumbnail URL from 'thumbnail_url' meta field.
+* Preventing random content to avoid cache growing: Tag Groups plugin - Shuffle Box.
+* Requests cache.
+
+Fixes:
+
+* CSS parsing: If rule ends with a comma without a semicolon it breaks further rules.
+
+= 2.26.7 =
+
+Improvements:
+
+* Support for animations of Elementor.
+* Support for setting defines in PHP with disabled 'token_get_all' function.
+
+Fixes:
+
+* PHP error: Call to undefined function 'seraph_accel\CacheExt_Clear_CopyHdrs'.
+* PHP error: Illegal offset type in 'options.php'.
+
+= 2.26.6 =
+
+Improvements:
+
+* Support for WP Shield Content Protector.
+* Support for animations of Elementor.
+
+Fixes:
+
+* HTML comments inside 'script' tags are interpreted as common.
+* PHP warning: Creation of dynamic property seraph_accel\ProcessQueueItemCtx::$url is deprecated.
+
+= 2.26.5 =
+
+Improvements:
+
+* External objects cache.
+* Fast content optimization in temporary cache.
+* Image compression of 'img' tag inside 'noscript' tag.
+* Logging the reason of posts changing.
+* Preventing random content to avoid cache growing: CloudFlare Turnstile.
+
+Fixes:
+
+* Fast content optimization in temporary cache: Scripts are always requires full optimization.
+* Fast content optimization in temporary cache: There is no switch to self-learning while revalidation.
+
+= 2.26.4 =
+
+Improvements:
+
+* Revalidation expression @author.
+
+Fixes:
+
+* HTML normalizing: self-closed 'a' tag is not corrected.
+
+= 2.26.3 =
+
+Improvements:
+
+* Preventing random content to avoid cache growing: WPEL links.
+* Self-learning: Ultra-fast processing.
+
+Fixes:
+
+* CloudWays's cache clearing.
+
+= 2.26.2 =
+
+Improvements:
+
+* Defining particular interval in revalidation expression of page numbers.
+* Fast content optimization in temporary cache.
+* Self-learning: Ultra-fast processing.
+
+Fixes:
+
+* QSD flag in HTACCESS is not compatible with version less than 2.4.0 of Apache.
+
+= 2.26.1 =
+
+Improvements:
+
+* Hurry Scarcity and Urgency Countdown Timer.
+* Lazy revalidation of fresh parts.
+* Preventing random ID generation from GTranslate.
+* Requests cache.
+* Self-learning: Ultra-fast processing.
+* Support for Servebolt cache.
 
 = 2.26 =
 
@@ -3813,6 +4386,7 @@ Fixes:
 * Block's help button is shifted to right.
 * CSS optimization: If script content is not changed then inlining is ignored.
 * Cache is not reset if admin changes user depended data.
+* Cache revalidation: Headers already sent by cache.php.
 * Call to undefined function: wpml_element_type_filter.
 * Characters are stripped from image URLs.
 * Compatibility issues with Polylang plugin.
