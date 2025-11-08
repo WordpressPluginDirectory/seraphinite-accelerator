@@ -1207,7 +1207,7 @@ function CacheOpGetViewsHeaders( $settCache, $viewId = null )
 
 	foreach( $viewId === null ? array( 'cmn' ) : $viewId as $viewIdI )
 		if( CacheOpViewsHeadersGetViewId( $viewIdI ) == 'cmn' )
-			$res[ $viewIdI ] = array( 'User-Agent' => 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.45' );
+			$res[ $viewIdI ] = array( 'User-Agent' => 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.47' );
 
 	if( ($settCache[ 'views' ]??null) )
 	{
@@ -1900,6 +1900,17 @@ function GetCacheStatusInfo( $siteId, $cbCancel )
 	return( $info );
 }
 
+function _SiteIdSites_GetAlts( &$aAddrSite )
+{
+
+	if( defined( 'SERAPH_ACCEL_ALT_ROOTS' ) )
+	{
+		foreach( ( array )SERAPH_ACCEL_ALT_ROOTS as $url )
+			if( $urlComps = Net::UrlParse( $url ) )
+				$aAddrSite[] = trim( Net::UrlDeParse( $urlComps, 0, array(), array( PHP_URL_HOST, PHP_URL_PORT, PHP_URL_PATH ) ), '/' );
+	}
+}
+
 function _AddSiteIdSites( &$sitesIds, $addrSite, $siteId, $availablePlugins )
 {
 	$sitesIds[ $addrSite ] = $siteId;
@@ -1941,12 +1952,7 @@ function _AddSiteIdSites( &$sitesIds, $addrSite, $siteId, $availablePlugins )
 		}
 	}
 
-	if( defined( 'SERAPH_ACCEL_ALT_ROOTS' ) )
-	{
-		foreach( ( array )SERAPH_ACCEL_ALT_ROOTS as $url )
-			if( $urlComps = Net::UrlParse( $url ) )
-				$aAddrSite[] = trim( Net::UrlDeParse( $urlComps, 0, array(), array( PHP_URL_HOST, PHP_URL_PORT, PHP_URL_PATH ) ), '/' );
-	}
+	_SiteIdSites_GetAlts( $aAddrSite );
 
 	foreach( $aAddrSite as $addr )
 		if( !isset( $sitesIds[ $addr ] ) )

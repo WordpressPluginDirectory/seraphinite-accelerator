@@ -5,7 +5,7 @@ Tags: optimize,pagespeed,performance,speed up,cache
 Requires PHP: 7.1
 Requires at least: 4.5
 Tested up to: 6.8
-Stable tag: 2.27.45
+Stable tag: 2.27.47
 License: GPLv2 or later (if another license is not provided)
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Privacy policy: https://www.s-sols.com/privacy-policy
@@ -161,6 +161,27 @@ We kindly ask you to [post reviews](https://wordpress.org/support/plugin/seraphi
 17. Settings - Advanced.
 
 == Changelog ==
+
+= 2.27.47 =
+
+Improvements:
+
+* Exclusions for lazy HTML.
+* Preventing random content to avoid cache growing: Anti-Spam by CleanTalk.
+* Restoring original user agent for 404 pages.
+* Warming up cache including alternative site's roots defined by 'SERAPH_ACCEL_ALT_ROOTS'.
+
+= 2.27.46 =
+
+Improvements:
+
+* Support delay loading of IFRAME with 'onload' attribute.
+
+Fixes:
+
+* HTML replace works if content optimization is disabled in groups.
+* Setting can be saved incorrectly in 'wp-config.php' under BatCache based hostings.
+* Styles conflict in HTML tag in PeakTwo theme 'libraries.js'.
 
 = 2.27.45 =
 

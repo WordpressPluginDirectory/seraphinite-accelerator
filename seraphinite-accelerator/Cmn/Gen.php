@@ -1817,7 +1817,9 @@ class Gen
 			return( preg_replace( '@([^\\.])0+$@', '${1}', sprintf( '%.' . ( string )$fmt[ 'floatPrec' ] . 'F', $v ) ) );
 
 		case 'string':
-			return( json_encode( $v, JSON_UNESCAPED_SLASHES ) );
+			$v = json_encode( $v, JSON_UNESCAPED_SLASHES );
+			$v = str_replace( array( '${' ), array( '\\${' ), $v );
+			return( $v );
 
 		case 'array':
 			$res = 'array(' . $fmt[ 'elemSpace' ];
@@ -3624,7 +3626,7 @@ class Net
 		if( !isset( $args[ 'provider' ] ) )
 			$args[ 'provider' ] = 'CURL';
 		if( !isset( $args[ 'user-agent' ] ) )
-			$args[ 'user-agent' ] = 'seraph-accel-Agent/2.27.45';
+			$args[ 'user-agent' ] = 'seraph-accel-Agent/2.27.47';
 		if( !isset( $args[ 'timeout' ] ) )
 			$args[ 'timeout' ] = 5;
 

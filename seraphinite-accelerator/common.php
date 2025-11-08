@@ -12,7 +12,7 @@ require_once( __DIR__ . '/Cmn/Db.php' );
 require_once( __DIR__ . '/Cmn/Img.php' );
 require_once( __DIR__ . '/Cmn/Plugin.php' );
 
-const PLUGIN_SETT_VER								= 182;
+const PLUGIN_SETT_VER								= 184;
 const PLUGIN_DATA_VER								= 1;
 const PLUGIN_EULA_VER								= 1;
 const QUEUE_DB_VER									= 4;
@@ -1428,7 +1428,8 @@ function OnOptGetDef_Sett()
 
 			'urisExcl' => array(
 				'/checkout/',
-				'@.*sitemap\.xsl$@',
+				'@sitemap@',
+
 				'@(?:^|/)page/@',
 			),
 			'exclAgents' => array(
@@ -1456,6 +1457,8 @@ function OnOptGetDef_Sett()
 			'skipArgs' => array( 'redirect_to', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'story_fbid', 'mibextid', 'gclid', 'wbraid', 'gbraid', 'gad_campaignid', 'gad_source', '_ga', 'yclid', 'srsltid' ),
 
 			'exclConts' => array(
+				'.//*[@id="wpadminbar"]',
+				'.//body[contains(concat(" ",normalize-space(@class)," ")," theme-woodmart ")][contains(concat(" ",normalize-space(@class)," ")," seraph-accel-view-cmn ")]//*[contains(concat(" ",normalize-space(@class)," ")," whb-general-header-inner ")][count(./*[contains(concat(" ",normalize-space(@class)," ")," whb-visible-lg ")]) = 0]',
 			),
 
 			'hdrs' => array(
@@ -1686,7 +1689,7 @@ function OnOptGetDef_Sett()
 				),
 
 				'lifterlms' => array(
-					'enable' => true,
+					'enable' => false,
 					'name' => 'LMS by LifterLMS',
 
 					'tables' => array(
@@ -1786,6 +1789,8 @@ function OnOptGetDef_Sett()
 					'@fwp-loop@i',
 
 					'@data-map-zoom@i',
+
+					'@react@i',
 				),
 				'items' => array(
 					'.//img/@loading',
@@ -1822,10 +1827,13 @@ function OnOptGetDef_Sett()
 				'elmntrTrx' => true,
 				'thmXStr' => true,
 				'wooPrdQnt' => true,
+				'asClnTlk' => true,
 			),
 
 			'lazy' => array(
 				'items' => array(
+				),
+				'itemsExcl' => array(
 				),
 				'bjs' => true,
 				'p' => false,
@@ -4086,7 +4094,7 @@ function ContProcIsCompatView( $settCache, $userAgent  )
 
 function GetViewTypeUserAgent( $viewsDeviceGrp )
 {
-	return( 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.45 ' . ucwords( implode( ' ', Gen::GetArrField( $viewsDeviceGrp, array( 'agents' ), array() ) ) ) );
+	return( 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.47 ' . ucwords( implode( ' ', Gen::GetArrField( $viewsDeviceGrp, array( 'agents' ), array() ) ) ) );
 }
 
 function CorrectRequestScheme( &$serverArgs, $target = null )
@@ -5390,7 +5398,7 @@ function GetExtContents( &$ctxProcess, $url, &$contMimeType = null, $userAgentCm
 
 	$args = array( 'sslverify' => false, 'timeout' => $timeout, 'headers' => array() );
 	if( $userAgentCmn )
-		$args[ 'headers' ][ 'User-Agent' ] = 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.45';
+		$args[ 'headers' ][ 'User-Agent' ] = 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.47';
 
 	global $seraph_accel_g_aGetExtContentsFailedSrvs;
 
@@ -5850,7 +5858,7 @@ function CacheAdditional_WarmupUrl( $settCache, $url, $aHdrs, $cbIsAborted = nul
 	foreach( $aHdrs as $hdrsId => $headers )
 	{
 		if( !isset( $headers[ 'User-Agent' ] ) )
-			$headers[ 'User-Agent' ] = ($headers[ 'X-Seraph-Accel-Postpone-User-Agent' ]??'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.45');
+			$headers[ 'User-Agent' ] = ($headers[ 'X-Seraph-Accel-Postpone-User-Agent' ]??'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.47');
 		$headers[ 'User-Agent' ] = str_replace( 'seraph-accel-Agent/', 'seraph-accel-Agent-WarmUp/', $headers[ 'User-Agent' ] );
 
 		if( isset( $headers[ 'X-Seraph-Accel-Geo-Remote-Addr' ] ) )
