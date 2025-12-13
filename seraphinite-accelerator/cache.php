@@ -144,7 +144,7 @@ function _Process( $sites )
 	$settCache = Gen::GetArrField( $sett, array( 'cache' ), array() );
 
 	$timeoutCln = Gen::GetArrField( $settCache, array( 'timeoutCln' ), 0 ) * 60;
-	$timeout = Gen::GetArrField( $settCache, array( 'timeout' ), 0 ) * 60;
+	$timeout = ($settCache[ 'updByTimeout' ]??true) ? ( Gen::GetArrField( $settCache, array( 'timeout' ), 0 ) * 60 ) : 0;
 
 	if( ( $requestMethod == 'GET' ) && isset( $_REQUEST[ 'seraph_accel_gf' ] ) )
 	{
@@ -332,6 +332,15 @@ function _Process( $sites )
 					$_SERVER[ 'HTTP_USER_AGENT' ] = $_SERVER[ 'SERAPH_ACCEL_ORIG_USER_AGENT' ];
 			}
 		, 0 );
+
+	add_filter( 'wp_redirect_status',
+		function( $status, $location )
+		{
+			global $seraph_accel_g_sRedirLocation;
+			$seraph_accel_g_sRedirLocation = $location;
+			return( $status );
+		}
+	, 99999, 2 );
 
 	{
 		$seraph_accel_g_ctxCache -> userId = $userId;
@@ -656,7 +665,7 @@ function _ProcessOutHdrTrace( $sett, $bHdr, $bLog, $state, $data = null, $dscFil
 		}
 
 	if( $bHdr )
-		@header( 'X-Seraph-Accel-Cache: 2.27.47;' . $debugInfo );
+		@header( 'X-Seraph-Accel-Cache: 2.28.1;' . $debugInfo );
 
 	if( $bLog )
 	{
@@ -1267,6 +1276,7 @@ function CacheDscWriteCancel( $dscDel = true, $updTime = false )
 
 function _CacheSetRequestToPrepareAsyncEx( $siteId, $method, $url, $hdrs, $tmp = false )
 {
+
 	if( !$siteId )
 	{
 		$urlProc = ProcessQueueItemCtx::AdjustRequestUrl( $url, Gen::GetCurRequestTime(), array() );
@@ -1286,7 +1296,7 @@ function _CacheSetRequestToPrepareAsyncEx( $siteId, $method, $url, $hdrs, $tmp =
 			ProcessQueueItemCtx::MakeRequest( $asyncMode, $method, $urlProc, $hdrs );
 	}
 
-	if( CachePostPreparePageEx( $method, $url, $siteId, 10, null, $hdrs ) )
+	if( $tmp != 'only' && CachePostPreparePageEx( $method, $url, $siteId, 10, null, $hdrs ) )
 		CachePushQueueProcessor();
 }
 
@@ -1562,7 +1572,7 @@ function GetCacheViewId( $ctxCache, $settCache, $userAgent, $path, $pathOrig, &$
 	if( ($settCache[ 'normAgent' ]??null) )
 	{
 		$_SERVER[ 'SERAPH_ACCEL_ORIG_USER_AGENT' ] = ($_SERVER[ 'HTTP_USER_AGENT' ]??'');
-		$_SERVER[ 'HTTP_USER_AGENT' ] = 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.47';
+		$_SERVER[ 'HTTP_USER_AGENT' ] = 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.28.1';
 	}
 
 	if( ($settCache[ 'views' ]??null) )

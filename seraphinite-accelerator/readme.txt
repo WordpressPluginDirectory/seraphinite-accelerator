@@ -5,7 +5,7 @@ Tags: optimize,pagespeed,performance,speed up,cache
 Requires PHP: 7.1
 Requires at least: 4.5
 Tested up to: 6.8
-Stable tag: 2.27.47
+Stable tag: 2.28.1
 License: GPLv2 or later (if another license is not provided)
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Privacy policy: https://www.s-sols.com/privacy-policy
@@ -161,6 +161,38 @@ We kindly ask you to [post reviews](https://wordpress.org/support/plugin/seraphi
 17. Settings - Advanced.
 
 == Changelog ==
+
+= 2.28.1 =
+
+Improvements:
+
+* Adjusting 'nonce' period for Wp Forms tokens.
+
+Fixes:
+
+* Adjusting 'nonce' period skipped if user caching is enabled.
+* Lazy scripts loading: document's 'write' is not synchronous.
+* Processing 'source' tags of 'picture' are not checked by exclusions of lazy load.
+
+= 2.28 =
+
+Improvements:
+
+* Initiator's call stack in logging of post changing.
+* Language choosing in cache updating.
+* Preventing double initialization of excluded scripts.
+
+Fixes:
+
+* Early redirections sometimes are not hooked.
+* Wrong counting of requests in statistics.
+
+= 2.27.48 =
+
+Fixes:
+
+* Posting 'undefined' in request when operate on all pages.
+* When 'Auto-revalidate cache if time to live is expired' is disabled then temporary cache is not created while forced cache revalidation.
 
 = 2.27.47 =
 

@@ -1658,40 +1658,52 @@ class Gen
 		return( Gen::GetTempDirEx() );
 	}
 
-	static function GetCallStack( $options = DEBUG_BACKTRACE_PROVIDE_OBJECT, $limit = 0 )
+	const GETCALLSTACK_OPT_AS_ARRAY				= 0x80;
+	const GETCALLSTACK_OPT_ALL					= Gen::GETCALLSTACK_OPT_AS_ARRAY;
+
+	static function GetCallStack( $options = DEBUG_BACKTRACE_PROVIDE_OBJECT , $limit = 0 )
 	{
-		$a = @debug_backtrace( ( int )$options, ( int )$limit );
+		$a = @debug_backtrace( ( ( int )$options & ~Gen::GETCALLSTACK_OPT_ALL ), ( int )$limit );
 		array_splice( $a, 0, 1 );
 
-		$res = '';
+		$res = ( $options & Gen::GETCALLSTACK_OPT_AS_ARRAY ) ? array() : '';
 		foreach( $a as $i => $info )
 		{
-			if( $res )
-				$res .= "\n";
+			$r = '';
+			if( !( $options & Gen::GETCALLSTACK_OPT_AS_ARRAY ) )
+				$r = '#' . $i . ' ';
 
-			$res .= '#' . $i . ' ';
 			if( ($info[ 'file' ]??null) )
-				$res .= $info[ 'file' ];
+				$r .= $info[ 'file' ];
 			else
-				$res .= '{}';
+				$r .= '{}';
 			if( ($info[ 'line' ]??null) !== null )
-				$res .= '(' . $info[ 'line' ] . ')';
+				$r .= '(' . $info[ 'line' ] . ')';
 
-			$res .= ': ';
+			$r .= ': ';
 
 			if( ($info[ 'class' ]??null) )
-				$res .= $info[ 'class' ];
+				$r .= $info[ 'class' ];
 			if( ($info[ 'type' ]??null) )
-				$res .= $info[ 'type' ];
-			$res .= Gen::GetArrField( $info, array( 'function' ), '' ) . '(';
+				$r .= $info[ 'type' ];
+			$r .= Gen::GetArrField( $info, array( 'function' ), '' ) . '(';
 
 			foreach( Gen::GetArrField( $info, array( 'args' ), array() ) as $iArg => $arg )
 			{
 				if( $iArg )
-					$res .= ', ';
-				$res .= str_replace( array( '\\\\', '\\/' ), array( '\\', '/' ), @json_encode( $arg ) );
+					$r .= ', ';
+				$r .= str_replace( array( '\\\\', '\\/' ), array( '\\', '/' ), @json_encode( $arg ) );
 			}
-			$res .= ')';
+			$r .= ')';
+
+			if( $options & Gen::GETCALLSTACK_OPT_AS_ARRAY )
+				$res[] = $r;
+			else
+			{
+				if( $res )
+					$res .= "\n";
+				$res .= $r;
+			}
 		}
 
 		return( $res );
@@ -3626,7 +3638,7 @@ class Net
 		if( !isset( $args[ 'provider' ] ) )
 			$args[ 'provider' ] = 'CURL';
 		if( !isset( $args[ 'user-agent' ] ) )
-			$args[ 'user-agent' ] = 'seraph-accel-Agent/2.27.47';
+			$args[ 'user-agent' ] = 'seraph-accel-Agent/2.28.1';
 		if( !isset( $args[ 'timeout' ] ) )
 			$args[ 'timeout' ] = 5;
 

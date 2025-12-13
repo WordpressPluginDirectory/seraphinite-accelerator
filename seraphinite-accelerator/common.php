@@ -1340,6 +1340,7 @@ function OnOptGetDef_Sett()
 				'@^cwg_total_subscribers@',
 				'@^_backorders$@',
 				'@^_last_seen$@',
+				'@^woodmart_history_of_visits$@',
 			),
 
 			'updGlobs' => array(
@@ -1370,6 +1371,7 @@ function OnOptGetDef_Sett()
 			'updAllDeps' => array(
 				'@home',
 				'@postsViewable:<|@pageNums|@commentPageNums>',
+				'@termsOfClass@categories',
 			),
 
 			'updSche' => array(
@@ -1810,7 +1812,12 @@ function OnOptGetDef_Sett()
 						'enable' => true,
 						'expr' => '@<body[^>]+(cm-manage-google-fonts)[^>]+>@',
 						'data' => ''
-					)
+					),
+					array(
+						'enable' => true,
+						'expr' => '@\\sid=\\"nelio-ab-testing-main-js\\"@ & @<body[^>]+class="()@',
+						'data' => 'nab-done '
+					),
 				),
 			),
 
@@ -2217,6 +2224,8 @@ function OnOptGetDef_Sett()
 						'src:@trustindex\\.io/assets/js/richsnippet@',
 
 						'src:@web\\.cmp\\.usercentrics\\.eu/@',
+
+						'id:@^zeroy-tailwind-@',
 					),
 
 					'timeout' => array(
@@ -4008,6 +4017,8 @@ function ContProcGetSkipStatus( $content )
 	}
 
 	$http_response_code = http_response_code();
+	if( $seraph_accel_g_sRedirLocation && $http_response_code === 200 )
+		$http_response_code = 302;
 	if( $http_response_code !== 200 )
 	{
 		$skipStatus = 'httpCode:' . $http_response_code;
@@ -4094,7 +4105,7 @@ function ContProcIsCompatView( $settCache, $userAgent  )
 
 function GetViewTypeUserAgent( $viewsDeviceGrp )
 {
-	return( 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.47 ' . ucwords( implode( ' ', Gen::GetArrField( $viewsDeviceGrp, array( 'agents' ), array() ) ) ) );
+	return( 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.28.1 ' . ucwords( implode( ' ', Gen::GetArrField( $viewsDeviceGrp, array( 'agents' ), array() ) ) ) );
 }
 
 function CorrectRequestScheme( &$serverArgs, $target = null )
@@ -5398,7 +5409,7 @@ function GetExtContents( &$ctxProcess, $url, &$contMimeType = null, $userAgentCm
 
 	$args = array( 'sslverify' => false, 'timeout' => $timeout, 'headers' => array() );
 	if( $userAgentCmn )
-		$args[ 'headers' ][ 'User-Agent' ] = 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.47';
+		$args[ 'headers' ][ 'User-Agent' ] = 'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.28.1';
 
 	global $seraph_accel_g_aGetExtContentsFailedSrvs;
 
@@ -5858,7 +5869,7 @@ function CacheAdditional_WarmupUrl( $settCache, $url, $aHdrs, $cbIsAborted = nul
 	foreach( $aHdrs as $hdrsId => $headers )
 	{
 		if( !isset( $headers[ 'User-Agent' ] ) )
-			$headers[ 'User-Agent' ] = ($headers[ 'X-Seraph-Accel-Postpone-User-Agent' ]??'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.27.47');
+			$headers[ 'User-Agent' ] = ($headers[ 'X-Seraph-Accel-Postpone-User-Agent' ]??'Mozilla/99999.9 AppleWebKit/9999999.99 (KHTML, like Gecko) Chrome/999999.0.9999.99 Safari/9999999.99 seraph-accel-Agent/2.28.1');
 		$headers[ 'User-Agent' ] = str_replace( 'seraph-accel-Agent/', 'seraph-accel-Agent-WarmUp/', $headers[ 'User-Agent' ] );
 
 		if( isset( $headers[ 'X-Seraph-Accel-Geo-Remote-Addr' ] ) )
